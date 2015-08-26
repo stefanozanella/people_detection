@@ -11,11 +11,12 @@ using pcl::PointXYZ;
 using pcl::PointXYZRGB;
 using pcl::io::loadPCDFile;
 using pcl::visualization::PCLVisualizer;
+using pcl::visualization::PointCloudColorHandlerRGBField;
 
 int main(int argc, char** argv) {
-  PointCloud<PointXYZ>::Ptr cloud_in (new PointCloud<PointXYZ>);
+  PointCloud<PointXYZRGB>::Ptr cloud_in (new PointCloud<PointXYZRGB>);
 
-  if (loadPCDFile<PointXYZ>("../dataset/1.pcd", *cloud_in) == -1) {
+  if (loadPCDFile<PointXYZRGB>("../dataset/1.pcd", *cloud_in) == -1) {
     PCL_ERROR("Couldn't read the pcd file.\n");
     return -1;
   }
@@ -31,8 +32,9 @@ int main(int argc, char** argv) {
 
 	viewer.addText("Original cloud", 10, 10, "viewport_text", viewport);
 
-  viewer.addPointCloud(
+  viewer.addPointCloud<PointXYZRGB>(
     cloud_in,
+    PointCloudColorHandlerRGBField<PointXYZRGB>(cloud_in),
     "original",
     viewport
   );
