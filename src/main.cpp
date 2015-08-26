@@ -14,9 +14,14 @@ using pcl::visualization::PCLVisualizer;
 using pcl::visualization::PointCloudColorHandlerRGBField;
 
 int main(int argc, char** argv) {
+  if (argc < 2) {
+    cout << "Usage: " << argv[0] << " <point_cloud_file>" << endl;
+    exit(1);
+  }
+
   PointCloud<PointXYZRGB>::Ptr cloud_in (new PointCloud<PointXYZRGB>);
 
-  if (loadPCDFile<PointXYZRGB>("../dataset/1.pcd", *cloud_in) == -1) {
+  if (loadPCDFile<PointXYZRGB>(argv[1], *cloud_in) == -1) {
     PCL_ERROR("Couldn't read the pcd file.\n");
     return -1;
   }
