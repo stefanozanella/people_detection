@@ -5,7 +5,8 @@ Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/trusty64"
 
   config.vm.provider "virtualbox" do |v|
-    v.customize ["modifyvm", :id, "--cpus", 2]
+    v.cpus = 2
+    v.memory = 2048
   end
 
   config.ssh.forward_x11 = true
