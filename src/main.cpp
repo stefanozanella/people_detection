@@ -1,14 +1,15 @@
 #include <iostream>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
 using std::cout;
 using std::endl;
 
 using pcl::PointCloud;
-using pcl::PointXYZ;
 using pcl::PointXYZRGB;
+using pcl::VoxelGrid;
 using pcl::io::loadPCDFile;
 using pcl::visualization::PCLVisualizer;
 using pcl::visualization::PointCloudColorHandlerRGBField;
@@ -20,6 +21,7 @@ int main(int argc, char** argv) {
   }
 
   PointCloud<PointXYZRGB>::Ptr cloud_in (new PointCloud<PointXYZRGB>);
+  PointCloud<PointXYZRGB>::Ptr cloud_downsampled (new PointCloud<PointXYZRGB>);
 
   if (loadPCDFile<PointXYZRGB>(argv[1], *cloud_in) == -1) {
     PCL_ERROR("Couldn't read the pcd file.\n");
@@ -27,6 +29,13 @@ int main(int argc, char** argv) {
   }
 
   cout << "Original point cloud: " << cloud_in->width << " x " << cloud_in->height << endl;
+
+  VoxelGrid<PointXYZRGB> downsampler;
+  downsampler.setInputCloud(cloud_in);
+  downsampler.setLeafSize(0.05f, 0.05f, 0.05f);
+  downsampler.filter(*cloud_downsampled);
+
+  cout << "Downsampled point cloud: " << cloud_downsampled->width << " x " << cloud_downsampled->height << endl;
 
   PCLVisualizer viewer ("PCL Viewer");
   int viewport;
@@ -38,8 +47,8 @@ int main(int argc, char** argv) {
 	viewer.addText("Original cloud", 10, 10, "viewport_text", viewport);
 
   viewer.addPointCloud<PointXYZRGB>(
-    cloud_in,
-    PointCloudColorHandlerRGBField<PointXYZRGB>(cloud_in),
+    cloud_downsampled,
+    PointCloudColorHandlerRGBField<PointXYZRGB>(cloud_downsampled),
     "original",
     viewport
   );

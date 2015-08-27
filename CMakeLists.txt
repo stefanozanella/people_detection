@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 project(people_detection)
 find_package(PCL 1.7 REQUIRED)
 
-add_definitions("--std=c++11")
+# https://github.com/PointCloudLibrary/pcl/issues/619
+# add_definitions("--std=c++11")
 
 add_definitions(${PCL_DEFINITIONS})
 include_directories(${PCL_INCLUDE_DIRS})
