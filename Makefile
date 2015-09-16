@@ -1,9 +1,15 @@
 in ?= dataset/1.pcd
 
 all: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_build in=$(in)"
+	vagrant ssh -c "cd /vagrant && make local_build"
 
-clean:
+run: vagrant_box
+	vagrant ssh -c "cd /vagrant && make local_run in=$(in)"
+
+sample: vagrant_box
+	vagrant ssh -c "cd /vagrant && make local_sample in=$(in)"
+
+clean: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_clean"
 
 ifneq ($(shell which vagrant),)
@@ -16,7 +22,13 @@ ifeq ($(vagrant_box_is_up),)
 endif
 
 local_build: build bin
-	@cd build && cmake .. && make && cd ../bin && ./people_detector /vagrant/$(in)
+	@cd build && cmake .. && make 
+
+local_run: local_build
+	@bin/people_detector /vagrant/$(in)
+
+local_sample: local_build
+	@bin/sample_app /vagrant/$(in)
 
 build:
 	mkdir build
