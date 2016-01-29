@@ -2,6 +2,7 @@
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <pcl/point_types_conversion.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
@@ -11,7 +12,9 @@ using std::endl;
 using pcl::io::loadPCDFile;
 
 typedef pcl::PointXYZRGB PointT;
+typedef pcl::PointXYZI MonochromePointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
+typedef pcl::PointCloud<MonochromePointT> MonochromePointCloudT;
 
 int main(int argc, char** argv) {
   if (argc < 2) {
@@ -29,6 +32,93 @@ int main(int argc, char** argv) {
   cout << "Original point cloud: " << cloud->width << " x " << cloud->height << endl;
   cout << "Point cloud size: " << cloud->width * cloud->height << endl;
 
+  /////////////////////////////////////////////////////////////////////////////
+  // Integral image
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Calculates integral image. At a specific location (j,k), the integral image
+   * can be computed as the algebraic addition the follows:
+   * +-------+---+
+   * |       |   |
+   * |   A   | B |
+   * |       |   |
+   * +-------+---+
+   * |   C   | D |
+   * +-------+---+(j,k)
+   *
+   * ii(j,k) = D + B + C - A
+   *
+   * Where:
+   *
+   * D = cloud[j,k]
+   * B = ii(j-1, k)
+   * C = ii(j, k-1)
+   * A = ii(j-1, k-1)
+   *
+   * On the 1st row and 1st column, we must subsititute values where one or both
+   * indexes are out of range with the value 0 (i.e. the particular element is
+   * not to be considered). The same effect can be obtained by augmenting the
+   * image with a row and a column of 0s in the first position:
+   *
+   * 0|00000000000|
+   * -+-------+---+
+   * 0|       |   |
+   * 0|   A   | B |
+   * 0|       |   |
+   * -+-------+---+
+   * 0|   C   | D |
+   * -+-------+---+(j,k)
+   */
+
+  MonochromePointCloudT::Ptr integral_image (new MonochromePointCloudT);
+
+  integral_image->width = cloud->width;
+  integral_image->height = cloud->height;
+  integral_image->points.resize(cloud->points.size());
+  integral_image->is_dense = false;
+
+  for (int k = 0; k < cloud->height; k++) {
+    for (int j = 0; j < cloud->width; j++) {
+      // TODO What if 0,0 is NaN? What if another point is Nan?
+      // TODO A: I don't care because all that matters are intensities for now.
+      // TODO Hint: colors might be NaN too.
+      MonochromePointT d;
+      pcl::PointXYZRGBtoXYZI(cloud->at(j,k), d);
+
+      float a = j < 1 || k < 1 ? 0 : integral_image->at(j-1, k-1).intensity;
+      float b = j < 1 ? 0 : integral_image->at(j-1, k).intensity;
+      float c = k < 1 ? 0 : integral_image->at(j, k-1).intensity;
+
+      d.intensity += b + c - a;
+      integral_image->at(j, k) = d;
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // DEBUG
+  /////////////////////////////////////////////////////////////////////////////
+
+  pcl::visualization::PCLVisualizer monoviewer("PCL Viewer");
+  monoviewer.setCameraPosition(0,0,-2,0,-1,0,0);
+
+  pcl::visualization::PointCloudColorHandlerGenericField<MonochromePointT> mono(integral_image, "intensity");
+  pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb1(cloud);
+
+  int left_vp1, right_vp1;
+  monoviewer.createViewPort(0.0, 0.0, 0.5, 1.0, left_vp1);
+  monoviewer.createViewPort(0.5, 0.0, 1.0, 1.0, right_vp1);
+
+  monoviewer.addPointCloud<PointT> (cloud, rgb1, "cloud", left_vp1);
+  monoviewer.addPointCloud<MonochromePointT> (integral_image, mono, "window", right_vp1);
+  monoviewer.spin();
+
+  return 0;
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Sliding window
+  /////////////////////////////////////////////////////////////////////////////
+
   int window_width = 64;
   int window_height = 64;
   int step_size = 64;
@@ -44,10 +134,10 @@ int main(int argc, char** argv) {
 
       PointCloudT::Ptr window (new PointCloudT);
 
-      // TODO Why does it work while instead if I copy the range of points
-      // manually the colors are screwed up? I think the answer lies in either
-      // pcl::ExtractIndices.filter or pcl::PCLBase.setIndices.
-      // Solving this (i.e. being able to do this manually) would probably allow
+      // TODO Manyually copy the window's points, setting is_dense to false in
+      // the window cloud (or finding a way to remove the NaN while keeping the
+      // point cloud organized).
+      // Doin this would probably allow
       // for a great speedup, as each new window can be built by removing a
       // row/column and adding another one.
       // Q: Will all this matter since most of the work is done via an integral
