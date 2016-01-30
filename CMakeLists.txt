@@ -14,6 +14,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 add_executable(people_detector src/main.cpp)
+add_executable(extract_faces src/extract_faces.cpp)
 add_executable(sample_app apps/main_ground_based_people_detection.cpp)
 target_link_libraries(people_detector ${PCL_LIBRARIES})
+target_link_libraries(extract_faces ${PCL_LIBRARIES})
 target_link_libraries(sample_app ${PCL_LIBRARIES})

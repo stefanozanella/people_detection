@@ -4,10 +4,13 @@ all: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_build"
 
 run: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_run in=$(in)"
+	vagrant ssh -c "cd /vagrant && make local_run app=people_detector in=$(in)"
+
+extract_faces: vagrant_box
+	vagrant ssh -c "cd /vagrant && make local_run app=extract_faces in=$(in)"
 
 sample: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_sample in=$(in)"
+	vagrant ssh -c "cd /vagrant && make local_rum app=sample_app in=$(in)"
 
 clean: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_clean"
@@ -25,10 +28,7 @@ local_build: build bin
 	@cd build && cmake .. && make 
 
 local_run: local_build
-	@bin/people_detector /vagrant/$(in)
-
-local_sample: local_build
-	@bin/sample_app /vagrant/$(in)
+	@bin/$(app) /vagrant/$(in)
 
 build:
 	mkdir build
