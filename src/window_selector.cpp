@@ -6,6 +6,15 @@
 using std::max;
 using std::min;
 
+PointCloudWindow::PointCloudWindow(
+    uint32_t x,
+    uint32_t y,
+    uint32_t size) :
+  x (x),
+  y (y),
+  size (size)
+{}
+
 WindowSelector::WindowSelector(const PointCloudT::Ptr input) :
   input (input),
   viewer ("window selector"),
@@ -34,7 +43,7 @@ WindowSelector::WindowSelector(const PointCloudT::Ptr input) :
       right);
 
   viewer.registerPointPickingCallback(&WindowSelector::relocateWindow, *this);
-  viewer.registerKeyboardCallback(&WindowSelector::shiftWindow, *this);
+  viewer.registerKeyboardCallback(&WindowSelector::keyboardInteraction, *this);
 }
 
 WindowSelector::~WindowSelector() {
@@ -54,28 +63,32 @@ void WindowSelector::relocateWindow(const PointPickingEvent &event, void*) {
   updateWindow();
 }
 
-void WindowSelector::shiftWindow(const KeyboardEvent &event, void*) {
+void WindowSelector::keyboardInteraction(const KeyboardEvent &event, void*) {
   if (event.keyDown()) {
-    if (event.getKeySym() == "Up") {
-      window_y = max(window_y - 1, uint32_t(0));
-      updateWindow();
+    if (event.getKeySym() == "Up" ||
+        event.getKeySym() == "Down" ||
+        event.getKeySym() == "Left" ||
+        event.getKeySym() == "Right") {
+      shiftWindow(event.getKeySym());
     }
 
-    if (event.getKeySym() == "Down") {
-      window_y = min(window_y + 1, input->height);
-      updateWindow();
-    }
-
-    if (event.getKeySym() == "Left") {
-      window_x = max(window_x - 1, uint32_t(0));
-      updateWindow();
-    }
-
-    if (event.getKeySym() == "Right") {
-      window_x = min(window_x + 1, input->width);
-      updateWindow();
+    if (event.getKeySym() == "s") {
+      saveCurrentWindow();
     }
   }
+}
+
+void WindowSelector::shiftWindow(const string &direction) {
+  if (direction == "Up")
+    window_y = max(window_y - 1, uint32_t(0));
+  else if (direction == "Down")
+    window_y = min(window_y + 1, input->height);
+  else if (direction == "Left")
+    window_x = max(window_x - 1, uint32_t(0));
+  else if (direction == "Right")
+    window_x = min(window_x + 1, input->width);
+
+  updateWindow();
 }
 
 void WindowSelector::updateWindow() {
@@ -88,6 +101,14 @@ void WindowSelector::updateWindow() {
       "window");
 }
 
+void WindowSelector::saveCurrentWindow() {
+  _faces.push_back(PointCloudWindow(window_x, window_y, win_size));
+}
+
 void WindowSelector::spin() {
   viewer.spin();
+}
+
+vector<PointCloudWindow> WindowSelector::faces() {
+  return _faces;
 }
