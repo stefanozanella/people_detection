@@ -1,5 +1,10 @@
 #include "window_selector.h"
+
+#include <algorithm>
 #include <boost/function.hpp>
+
+using std::max;
+using std::min;
 
 WindowSelector::WindowSelector(const PointCloudT::Ptr input) :
   input (input),
@@ -29,6 +34,7 @@ WindowSelector::WindowSelector(const PointCloudT::Ptr input) :
       right);
 
   viewer.registerPointPickingCallback(&WindowSelector::relocateWindow, *this);
+  viewer.registerKeyboardCallback(&WindowSelector::shiftWindow, *this);
 }
 
 WindowSelector::~WindowSelector() {
@@ -42,9 +48,38 @@ void WindowSelector::relocateWindow(const PointPickingEvent &event, void*) {
   std::vector<float> distances (1);
   search.nearestKSearch(picked, 1, indices, distances);
 
-  int x = indices[0] / input->width, y = indices[0] % input -> width;
+  window_y = indices[0] / input->width;
+  window_x = indices[0] % input -> width;
 
-  window_extractor.setIndices(x, y, win_size, win_size);
+  updateWindow();
+}
+
+void WindowSelector::shiftWindow(const KeyboardEvent &event, void*) {
+  if (event.keyDown()) {
+    if (event.getKeySym() == "Up") {
+      window_y = max(window_y - 1, uint32_t(0));
+      updateWindow();
+    }
+
+    if (event.getKeySym() == "Down") {
+      window_y = min(window_y + 1, input->height);
+      updateWindow();
+    }
+
+    if (event.getKeySym() == "Left") {
+      window_x = max(window_x - 1, uint32_t(0));
+      updateWindow();
+    }
+
+    if (event.getKeySym() == "Right") {
+      window_x = min(window_x + 1, input->width);
+      updateWindow();
+    }
+  }
+}
+
+void WindowSelector::updateWindow() {
+  window_extractor.setIndices(window_y, window_x, win_size, win_size);
   window_extractor.filter(*window);
 
   viewer.updatePointCloud<PointT>(

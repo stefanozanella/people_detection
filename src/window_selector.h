@@ -12,6 +12,7 @@ typedef pcl::visualization::PCLVisualizer PCLVisualizer;
 typedef pcl::visualization::PointCloudColorHandlerRGBField<PointT> RGBHandler;
 typedef pcl::ExtractIndices<PointT> ExtractIndices;
 typedef pcl::visualization::PointPickingEvent PointPickingEvent;
+typedef pcl::visualization::KeyboardEvent KeyboardEvent;
 typedef pcl::search::KdTree<PointT> KdTree;
 
 class WindowSelector {
@@ -21,8 +22,11 @@ class WindowSelector {
   PointCloudT::Ptr window;
   ExtractIndices window_extractor;
   static const int win_size = 64; // TODO Ahem...
+  uint32_t window_x, window_y;
 
   void relocateWindow(const PointPickingEvent &event, void*);
+  void shiftWindow(const KeyboardEvent &event, void*);
+  void updateWindow();
 
   public:
 
