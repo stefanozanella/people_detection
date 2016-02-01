@@ -42,11 +42,9 @@ int main(int argc, char** argv) {
 
   int sample_number = firstFreeSampleNumberIn("dataset/positive");
 
-  while (pcd_file != end) {
-    if (is_directory(pcd_file->path())) {
-      pcd_file++;
+  for (; pcd_file != end; pcd_file++) {
+    if (is_directory(pcd_file->path()))
       continue;
-    }
 
     PointCloudT::Ptr cloud (new PointCloudT);
 
@@ -65,8 +63,6 @@ int main(int argc, char** argv) {
       filename << output_dir << "/" << sample_number << ".pcd";
       savePCDFileASCII(filename.str(), *face);
     }
-
-    pcd_file++;
   }
 
   return 0;
