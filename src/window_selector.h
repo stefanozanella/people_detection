@@ -21,13 +21,6 @@ typedef pcl::search::KdTree<PointT> KdTree;
 using std::string;
 using std::vector;
 
-class PointCloudWindow {
-  public:
-
-  uint32_t x, y, size;
-  PointCloudWindow(uint32_t x, uint32_t y, uint32_t size);
-};
-
 class WindowSelector {
   PointCloudT::Ptr input;
   PCLVisualizer viewer;
@@ -36,7 +29,7 @@ class WindowSelector {
   ExtractIndices window_extractor;
   static const int win_size = 64; // TODO Ahem...
   uint32_t window_x, window_y;
-  vector<PointCloudWindow> _faces;
+  vector<PointCloudT::Ptr> _faces;
 
   void relocateWindow(const PointPickingEvent &event, void*);
   void keyboardInteraction(const KeyboardEvent &event, void*);
@@ -49,7 +42,7 @@ class WindowSelector {
   WindowSelector(const PointCloudT::Ptr input);
   ~WindowSelector();
   void spin();
-  vector<PointCloudWindow> faces();
+  vector<PointCloudT::Ptr> faces();
 };
 
 #endif

@@ -2,18 +2,11 @@
 
 #include <algorithm>
 #include <boost/function.hpp>
+#include <pcl/common/io.h>
 
 using std::max;
 using std::min;
-
-PointCloudWindow::PointCloudWindow(
-    uint32_t x,
-    uint32_t y,
-    uint32_t size) :
-  x (x),
-  y (y),
-  size (size)
-{}
+using pcl::copyPointCloud;
 
 WindowSelector::WindowSelector(const PointCloudT::Ptr input) :
   input (input),
@@ -102,13 +95,16 @@ void WindowSelector::updateWindow() {
 }
 
 void WindowSelector::saveCurrentWindow() {
-  _faces.push_back(PointCloudWindow(window_x, window_y, win_size));
+  PointCloudT::Ptr face (new PointCloudT);
+  copyPointCloud(*window, *face);
+
+  _faces.push_back(face);
 }
 
 void WindowSelector::spin() {
   viewer.spin();
 }
 
-vector<PointCloudWindow> WindowSelector::faces() {
+vector<PointCloudT::Ptr> WindowSelector::faces() {
   return _faces;
 }
