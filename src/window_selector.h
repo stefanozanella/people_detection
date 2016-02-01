@@ -39,8 +39,9 @@ class WindowSelector {
 
   public:
 
-  WindowSelector(const PointCloudT::Ptr input);
+  WindowSelector();
   ~WindowSelector();
+  void setInputCloud(const PointCloudT::Ptr input);
   void spin();
   vector<PointCloudT::Ptr> faces();
 };

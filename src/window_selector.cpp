@@ -8,15 +8,12 @@ using std::max;
 using std::min;
 using pcl::copyPointCloud;
 
-WindowSelector::WindowSelector(const PointCloudT::Ptr input) :
-  input (input),
+WindowSelector::WindowSelector() :
+  input (new PointCloudT),
   viewer ("window selector"),
   window_extractor (false),
   window (new PointCloudT)
 {
-  search.setInputCloud(input);
-  window_extractor.setInputCloud(input);
-
   viewer.setCameraPosition(0,0,-2,0,-1,0,0);
 
   int left, right;
@@ -37,6 +34,18 @@ WindowSelector::WindowSelector(const PointCloudT::Ptr input) :
 
   viewer.registerPointPickingCallback(&WindowSelector::relocateWindow, *this);
   viewer.registerKeyboardCallback(&WindowSelector::keyboardInteraction, *this);
+}
+
+void WindowSelector::setInputCloud(const PointCloudT::Ptr _input) {
+  input = _input;
+
+  search.setInputCloud(input);
+  window_extractor.setInputCloud(input);
+
+  viewer.updatePointCloud<PointT>(
+      input,
+      RGBHandler(input),
+      "input");
 }
 
 WindowSelector::~WindowSelector() {

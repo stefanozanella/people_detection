@@ -32,31 +32,33 @@ int firstFreeSampleNumberIn(string dir) {
 }
 
 int main(int argc, char** argv) {
+  WindowSelector selector;
 
   string input_dir (argv[1]);
   string output_dir (argv[2]);
 
   directory_iterator pcd_file ((path(input_dir)));
   directory_iterator end;
+
+  int sample_number = firstFreeSampleNumberIn("dataset/positive");
+
   while (pcd_file != end) {
-    cout << pcd_file->path() << endl;
-
-    PointCloudT::Ptr cloud (new PointCloudT);
-
     if (is_directory(pcd_file->path())) {
       pcd_file++;
       continue;
     }
+
+    PointCloudT::Ptr cloud (new PointCloudT);
 
     if (loadPCDFile<PointT>(pcd_file->path().string(), *cloud) == -1) {
       cout << "Couldn't load cloud file " << argv[1] << endl;
       return -1;
     }
 
-    WindowSelector selector (cloud);
+    selector.setInputCloud(cloud);
     selector.spin();
 
-    for (int k = 0, sample_number = firstFreeSampleNumberIn("dataset/positive"); k < selector.faces().size(); k++, sample_number++) {
+    for (int k = 0; k < selector.faces().size(); k++, sample_number++) {
       PointCloudT::Ptr face = selector.faces().at(k);
 
       ostringstream filename;
@@ -65,8 +67,6 @@ int main(int argc, char** argv) {
     }
 
     pcd_file++;
-
-    cout << "next" << endl;
   }
 
   return 0;
