@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <sstream>
+#include <string>
 #include <boost/filesystem.hpp>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
@@ -13,6 +14,7 @@ using pcl::io::loadPCDFile;
 using pcl::io::savePCDFileASCII;
 using std::ostringstream;
 using std::max;
+using std::string;
 using boost::filesystem::path;
 using boost::filesystem::directory_iterator;
 
@@ -31,6 +33,8 @@ int firstFreeSampleNumberIn(string dir) {
 int main(int argc, char** argv) {
   PointCloudT::Ptr cloud (new PointCloudT);
 
+  string output_dir (argv[2]);
+
   if (loadPCDFile<PointT>(argv[1], *cloud) == -1) {
     cout << "Couldn't load cloud file " << argv[1] << endl;
     return -1;
@@ -43,7 +47,7 @@ int main(int argc, char** argv) {
     PointCloudT::Ptr face = selector.faces().at(k);
 
     ostringstream filename;
-    filename << "dataset/positive/" << sample_number << ".pcd";
+    filename << output_dir << sample_number << ".pcd";
     savePCDFileASCII(filename.str(), *face);
   }
 
