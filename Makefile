@@ -9,9 +9,6 @@ run: vagrant_box
 extract_faces: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_run app=extract_faces in=$(in)"
 
-sample: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_rum app=sample_app in=$(in)"
-
 clean: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_clean"
 
