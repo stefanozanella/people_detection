@@ -7,14 +7,6 @@
 
 using pcl::io::loadPCDFile;
 
-typedef pcl::PointXYZRGB PointT;
-typedef pcl::PointCloud<PointT> PointCloudT;
-typedef pcl::visualization::PCLVisualizer PCLVisualizer;
-typedef pcl::visualization::PointCloudColorHandlerRGBField<PointT> RGBHandler;
-typedef pcl::ExtractIndices<PointT> ExtractIndices;
-typedef pcl::visualization::PointPickingEvent PointPickingEvent;
-typedef pcl::search::KdTree<PointT> KdTree;
-
 int main(int argc, char** argv) {
   PointCloudT::Ptr cloud (new PointCloudT);
 
