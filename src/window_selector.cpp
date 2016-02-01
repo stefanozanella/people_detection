@@ -59,8 +59,8 @@ void WindowSelector::relocateWindow(const PointPickingEvent &event, void*) {
   std::vector<float> distances (1);
   search.nearestKSearch(picked, 1, indices, distances);
 
-  window_y = indices[0] / input->width;
-  window_x = indices[0] % input -> width;
+  window_y = min(indices[0] / input->width, input->height - win_size);
+  window_x = min(indices[0] % input->width, input->width - win_size);
 
   updateWindow();
 }
@@ -84,11 +84,11 @@ void WindowSelector::shiftWindow(const string &direction) {
   if (direction == "Up")
     window_y = max(window_y - 1, uint32_t(0));
   else if (direction == "Down")
-    window_y = min(window_y + 1, input->height);
+    window_y = min(window_y + 1, input->height - win_size);
   else if (direction == "Left")
     window_x = max(window_x - 1, uint32_t(0));
   else if (direction == "Right")
-    window_x = min(window_x + 1, input->width);
+    window_x = min(window_x + 1, input->width - win_size);
 
   updateWindow();
 }
