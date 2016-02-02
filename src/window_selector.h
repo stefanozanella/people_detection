@@ -22,12 +22,13 @@ using std::string;
 using std::vector;
 
 class WindowSelector {
+  static const int win_size = 148; // TODO Ahem...
+
   PointCloudT::Ptr input;
   PCLVisualizer viewer;
   KdTree search;
   PointCloudT::Ptr window;
   ExtractIndices window_extractor;
-  static const int win_size = 64; // TODO Ahem...
   uint32_t window_x, window_y;
   vector<PointCloudT::Ptr> _faces;
 
