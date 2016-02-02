@@ -53,7 +53,7 @@ WindowSelector::~WindowSelector() {
 }
 
 /**
- * The picked point is goind to be the center of the new window. For this
+ * The picked point is going to be the center of the new window. For this
  * reason, we need to ensure we don't go over the upper and lower boundaries of
  * the images. This means we need to:
  * - calculate the index in the point's array for the point that has been
@@ -74,6 +74,9 @@ WindowSelector::~WindowSelector() {
  *   out of bounds on the other side (i.e. both coordinates are > 0):
  *     y = max(0, y)
  *     x = max(0, x)
+ *
+ * In addition to this, here we dynamically calculate the preferred window size
+ * as the ratio between the base window size and the selected point's distance.
  */
 void WindowSelector::relocateWindow(const PointPickingEvent &event, void*) {
   PointT picked;
@@ -82,6 +85,8 @@ void WindowSelector::relocateWindow(const PointPickingEvent &event, void*) {
   std::vector<int> indices (1);
   std::vector<float> distances (1);
   search.nearestKSearch(picked, 1, indices, distances);
+
+  win_size = ceil(base_win_size / input->at(indices[0]).z);
 
   window_y = max(0, (int) min(indices[0] / input->width, input->height - win_size / 2) - win_size / 2);
   window_x = max(0, (int) min(indices[0] % input->width, input->width - win_size / 2) - win_size / 2);

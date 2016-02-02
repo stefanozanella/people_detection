@@ -22,7 +22,7 @@ using std::string;
 using std::vector;
 
 class WindowSelector {
-  static const int win_size = 148; // TODO Ahem...
+  static const int base_win_size = 148; // TODO Ahem...
 
   PointCloudT::Ptr input;
   PCLVisualizer viewer;
@@ -30,6 +30,7 @@ class WindowSelector {
   PointCloudT::Ptr window;
   ExtractIndices window_extractor;
   uint32_t window_x, window_y;
+  int win_size;
   vector<PointCloudT::Ptr> _faces;
 
   void relocateWindow(const PointPickingEvent &event, void*);
