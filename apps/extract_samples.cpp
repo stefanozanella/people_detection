@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
   directory_iterator pcd_file ((path(input_dir)));
   directory_iterator end;
 
-  int sample_number = firstFreeSampleNumberIn("dataset/positive");
+  int sample_number = firstFreeSampleNumberIn(output_dir);
 
   for (; pcd_file != end; pcd_file++) {
     if (is_directory(pcd_file->path()))
