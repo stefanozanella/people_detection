@@ -43,6 +43,8 @@ void WindowSelector::setInputCloud(const PointCloudT::Ptr _input) {
   search.setInputCloud(input);
   window_extractor.setInputCloud(input);
 
+  _faces.clear();
+
   viewer.updatePointCloud<PointT>(
       input,
       RGBHandler(input),
