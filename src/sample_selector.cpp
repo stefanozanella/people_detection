@@ -1,4 +1,4 @@
-#include "window_selector.h"
+#include "sample_selector.h"
 
 #include <algorithm>
 #include <boost/function.hpp>
@@ -9,7 +9,7 @@ using std::max;
 using std::min;
 using pcl::copyPointCloud;
 
-WindowSelector::WindowSelector() :
+SampleSelector::SampleSelector() :
   input (new PointCloudT),
   viewer ("window selector"),
   window_extractor (false),
@@ -33,11 +33,11 @@ WindowSelector::WindowSelector() :
       "window",
       right);
 
-  viewer.registerPointPickingCallback(&WindowSelector::relocateWindow, *this);
-  viewer.registerKeyboardCallback(&WindowSelector::keyboardInteraction, *this);
+  viewer.registerPointPickingCallback(&SampleSelector::relocateWindow, *this);
+  viewer.registerKeyboardCallback(&SampleSelector::keyboardInteraction, *this);
 }
 
-void WindowSelector::setInputCloud(const PointCloudT::Ptr _input) {
+void SampleSelector::setInputCloud(const PointCloudT::Ptr _input) {
   input = _input;
 
   search.setInputCloud(input);
@@ -51,7 +51,7 @@ void WindowSelector::setInputCloud(const PointCloudT::Ptr _input) {
       "input");
 }
 
-WindowSelector::~WindowSelector() {
+SampleSelector::~SampleSelector() {
 }
 
 /**
@@ -80,7 +80,7 @@ WindowSelector::~WindowSelector() {
  * In addition to this, here we dynamically calculate the preferred window size
  * as the ratio between the base window size and the selected point's distance.
  */
-void WindowSelector::relocateWindow(const PointPickingEvent &event, void*) {
+void SampleSelector::relocateWindow(const PointPickingEvent &event, void*) {
   PointT picked;
   event.getPoint(picked.x, picked.y, picked.z);
 
@@ -96,7 +96,7 @@ void WindowSelector::relocateWindow(const PointPickingEvent &event, void*) {
   updateWindow();
 }
 
-void WindowSelector::keyboardInteraction(const KeyboardEvent &event, void*) {
+void SampleSelector::keyboardInteraction(const KeyboardEvent &event, void*) {
   if (event.keyDown()) {
     if (event.getKeySym() == "Up" ||
         event.getKeySym() == "Down" ||
@@ -111,7 +111,7 @@ void WindowSelector::keyboardInteraction(const KeyboardEvent &event, void*) {
   }
 }
 
-void WindowSelector::shiftWindow(const string &direction) {
+void SampleSelector::shiftWindow(const string &direction) {
   if (direction == "Up")
     window_y = max((int)(window_y - 1), 0);
   else if (direction == "Down")
@@ -124,7 +124,7 @@ void WindowSelector::shiftWindow(const string &direction) {
   updateWindow();
 }
 
-void WindowSelector::updateWindow() {
+void SampleSelector::updateWindow() {
   window_extractor.setIndices(window_y, window_x, win_size, win_size);
   window_extractor.filter(*window);
   window->width = window->height = win_size;
@@ -135,17 +135,17 @@ void WindowSelector::updateWindow() {
       "window");
 }
 
-void WindowSelector::saveCurrentWindow() {
+void SampleSelector::saveCurrentWindow() {
   PointCloudT::Ptr face (new PointCloudT);
   copyPointCloud(*window, *face);
 
   _faces.push_back(face);
 }
 
-void WindowSelector::spin() {
+void SampleSelector::spin() {
   viewer.spin();
 }
 
-vector<PointCloudT::Ptr> WindowSelector::faces() {
+vector<PointCloudT::Ptr> SampleSelector::faces() {
   return _faces;
 }

@@ -8,7 +8,7 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include "window_selector.h"
+#include "sample_selector.h"
 
 using pcl::io::loadPCDFile;
 using pcl::io::savePCDFileASCII;
@@ -32,7 +32,7 @@ int firstFreeSampleNumberIn(string dir) {
 }
 
 int main(int argc, char** argv) {
-  WindowSelector selector;
+  SampleSelector selector;
 
   string input_dir (argv[1]);
   string output_dir (argv[2]);

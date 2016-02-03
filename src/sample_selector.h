@@ -1,5 +1,5 @@
-#ifndef _WINDOW_SELECTOR_H
-#define _WINDOW_SELECTOR_H
+#ifndef _SAMPLE_SELECTOR_H
+#define _SAMPLE_SELECTOR_H
 
 #include <pcl/point_types.h>
 #include <pcl/filters/extract_indices.h>
@@ -21,7 +21,7 @@ typedef pcl::search::KdTree<PointT> KdTree;
 using std::string;
 using std::vector;
 
-class WindowSelector {
+class SampleSelector {
   static const int base_win_size = 148; // TODO Ahem...
 
   PointCloudT::Ptr input;
@@ -41,8 +41,8 @@ class WindowSelector {
 
   public:
 
-  WindowSelector();
-  ~WindowSelector();
+  SampleSelector();
+  ~SampleSelector();
   void setInputCloud(const PointCloudT::Ptr input);
   void spin();
   vector<PointCloudT::Ptr> faces();
