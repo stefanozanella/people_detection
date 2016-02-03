@@ -5,9 +5,7 @@
 #include <boost/filesystem.hpp>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/search/kdtree.h>
-#include <pcl/visualization/pcl_visualizer.h>
+
 #include "sample_selector.h"
 
 using pcl::io::loadPCDFile;
