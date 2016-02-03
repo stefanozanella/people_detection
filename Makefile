@@ -7,8 +7,8 @@ all: vagrant_box
 run: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_run app=people_detector in=/vagrant/$(in)"
 
-extract_faces: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_run app=extract_faces in=/vagrant/$(in) out=/vagrant/$(out)"
+extract_samples: vagrant_box
+	vagrant ssh -c "cd /vagrant && make local_run app=extract_samples in=/vagrant/$(in) out=/vagrant/$(out)"
 
 clean: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_clean"
