@@ -2,6 +2,7 @@
 #define _SAMPLE_SELECTOR_H
 
 #include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/visualization/pcl_visualizer.h>
