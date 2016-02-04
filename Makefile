@@ -8,7 +8,7 @@ run: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_run app=people_detector in=/vagrant/$(in)"
 
 train: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_run app=train in=/vagrant/$(in)"
+	vagrant ssh -c "cd /vagrant && make local_run app=train in=/vagrant/$(in) out=/vagrant/$(out)"
 
 extract_samples: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_run app=extract_samples in=/vagrant/$(in) out=/vagrant/$(out)"
