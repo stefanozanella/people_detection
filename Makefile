@@ -29,7 +29,7 @@ local_build: build bin
 	@cd build && cmake .. && make 
 
 local_run: local_build
-	@LC_ALL="C.UTF-8" bin/$(app) $(in) $(out)
+	@LC_ALL="C.UTF-8" time bin/$(app) $(in) $(out)
 
 build:
 	mkdir build
