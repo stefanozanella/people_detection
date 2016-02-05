@@ -6,15 +6,22 @@
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
+typedef pcl::PointXYZI MonochromePointT;
+typedef pcl::PointCloud<MonochromePointT> MonochromePointCloudT;
 
 class TrainingSample {
   public:
 
   PointCloudT::Ptr cloud;
+  MonochromePointCloudT::Ptr integral_image;
   bool isPositive;
 
-  TrainingSample(bool isPositive);
+  TrainingSample(PointCloudT::Ptr cloud, bool isPositive);
   ~TrainingSample();
+
+  private:
+
+  void calculateIntegralImage();
 };
 
 #endif

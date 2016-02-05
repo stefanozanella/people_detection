@@ -1,7 +1,7 @@
 /**
  * GOAL:
  * [x] load samples
- * [ ] calculate samples's integral image
+ * [x] calculate samples's integral image
  * [ ] generate features
  * [ ] select first weak classifier
  */
@@ -33,28 +33,26 @@ int main(int argc, char** argv) {
   vector<TrainingSample> samples;
 
   for (; positive_sample != no_more_samples; positive_sample++) {
-    TrainingSample sample (true);
+    PointCloudT::Ptr sample_cloud (new PointCloudT);
 
-    if (loadPCDFile<PointT>(positive_sample->path().string(), *(sample.cloud)) == -1) {
+    if (loadPCDFile<PointT>(positive_sample->path().string(), *(sample_cloud)) == -1) {
       cout << "Couldn't load cloud file " << positive_sample->path() << endl;
       return -1;
     }
 
-    samples.push_back(sample);
+    samples.push_back(TrainingSample(sample_cloud, true));
   }
 
   for (; negative_sample != no_more_samples; negative_sample++) {
-    TrainingSample sample (false);
+    PointCloudT::Ptr sample_cloud (new PointCloudT);
 
-    if (loadPCDFile<PointT>(negative_sample->path().string(), *(sample.cloud)) == -1) {
+    if (loadPCDFile<PointT>(negative_sample->path().string(), *(sample_cloud)) == -1) {
       cout << "Couldn't load cloud file " << negative_sample->path() << endl;
       return -1;
     }
 
-    samples.push_back(sample);
+    samples.push_back(TrainingSample(sample_cloud, false));
   }
-
-  cout << samples.size() << endl;
 
   return 0;
 }
