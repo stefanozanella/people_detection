@@ -69,3 +69,11 @@ void TrainingSample::calculateIntegralImage() {
     }
   }
 }
+
+float TrainingSample::integral_sum(int from_x, int from_y, int to_x, int to_y) {
+  return
+    integral_image->at(to_x, to_y).intensity -
+    integral_image->at(from_x, to_y).intensity -
+    integral_image->at(to_x, from_y).intensity +
+    integral_image->at(from_x, from_y).intensity;
+}

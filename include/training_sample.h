@@ -19,6 +19,8 @@ class TrainingSample {
   TrainingSample(PointCloudT::Ptr cloud, bool isPositive);
   ~TrainingSample();
 
+  float integral_sum(int from_x, int from_y, int to_x, int to_y);
+
   private:
 
   void calculateIntegralImage();
