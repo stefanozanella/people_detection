@@ -1,6 +1,7 @@
 #include "training_sample.h"
 
 #include <pcl/point_types_conversion.h>
+#include <cmath>
 
 TrainingSample::TrainingSample(PointCloudT::Ptr cloud, bool isPositive) :
   cloud (cloud),
@@ -70,10 +71,24 @@ void TrainingSample::calculateIntegralImage() {
   }
 }
 
-float TrainingSample::integral_sum(int from_x, int from_y, int to_x, int to_y) {
+float TrainingSample::scaled_integral_sum(int from_x, int from_y, int to_x, int to_y, uint32_t base_size) const {
+  return
+    integral_sum(
+      scaled_coordinate(from_x, base_size),
+      scaled_coordinate(from_y, base_size),
+      scaled_coordinate(to_x, base_size),
+      scaled_coordinate(to_y, base_size)
+    );
+}
+
+float TrainingSample::integral_sum(int from_x, int from_y, int to_x, int to_y) const {
   return
     integral_image->at(to_x, to_y).intensity -
     integral_image->at(from_x, to_y).intensity -
     integral_image->at(to_x, from_y).intensity +
     integral_image->at(from_x, from_y).intensity;
+}
+
+int TrainingSample::scaled_coordinate(int coordinate, uint32_t base_size) const {
+  return round(coordinate * integral_image->width / base_size);
 }

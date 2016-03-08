@@ -4,7 +4,11 @@
  * [x] calculate samples's integral image
  * [x] generate features
  * [x] verify generated features and feature calculation
+ * [ ] SAMPLES NORMALIZATION
  * [ ] select first weak classifier
+ *  [ ] for each feature
+ *    [x] compute feature value for all samples
+ *    [ ] sort feature values
  */
 #include <string>
 #include <iostream>
@@ -18,6 +22,7 @@
 #include "training_sample.h"
 #include "rect.h"
 #include "feature.h"
+#include "feature_value.h"
 
 using std::string;
 using std::cout;
@@ -27,6 +32,7 @@ using boost::filesystem::path;
 using boost::filesystem::directory_iterator;
 using pcl::io::loadPCDFile;
 using std::max;
+using std::sort;
 
 int main(int argc, char** argv) {
   string positive_samples_dir (argv[1]), negative_samples_dir (argv[2]);
@@ -79,7 +85,7 @@ int main(int argc, char** argv) {
       for (uint32_t dx = 1; 2*dx < base_win_size - x; dx++) {
         for (uint32_t dy = 1; dy < base_win_size - y; dy++) {
           features.push_back(
-            Feature() <<
+            Feature(base_win_size) <<
             Rect(x, y, dx, dy, -1) <<
             Rect(x + dx, y, dx, dy, 1)
           );
@@ -91,7 +97,7 @@ int main(int argc, char** argv) {
       for (int dx = 1; dx < base_win_size - x; dx++) {
         for (int dy = 1; 2*dy < base_win_size - y; dy++) {
           features.push_back(
-            Feature() <<
+            Feature(base_win_size) <<
             Rect(x, y, dx, dy, -1) <<
             Rect(x, y + dy, dx, dy, 1)
           );
@@ -103,7 +109,7 @@ int main(int argc, char** argv) {
       for (int dx = 1; 3*dx < base_win_size - x; dx++) {
         for (int dy = 1; dy < base_win_size - y; dy++) {
           features.push_back(
-            Feature() <<
+            Feature(base_win_size) <<
             Rect(x, y, dx, dy, -1) <<
             Rect(x + dx, y, dx, dy, 1) <<
             Rect(x + 2*dx, y, dx, dy, -1)
@@ -116,7 +122,7 @@ int main(int argc, char** argv) {
       for (int dx = 1; dx < base_win_size - x; dx++) {
         for (int dy = 1; 3*dy < base_win_size - y; dy++) {
           features.push_back(
-            Feature() <<
+            Feature(base_win_size) <<
             Rect(x, y, dx, dy, -1) <<
             Rect(x, y + dy, dx, dy, 1) <<
             Rect(x, y + 2*dy, dx, dy, -1)
@@ -129,7 +135,7 @@ int main(int argc, char** argv) {
       for (int dx = 1; 4*dx < base_win_size - x; dx++) {
         for (int dy = 1; 4*dy < base_win_size - y; dy++) {
           features.push_back(
-            Feature() <<
+            Feature(base_win_size) <<
             Rect(x, y, dx, dy, -1) <<
             Rect(x + dx, y, dx, dy, 1) <<
             Rect(x, y + dy, dx, dy, 1) <<
@@ -142,6 +148,8 @@ int main(int argc, char** argv) {
   }
 
   cout << "Generated " << count << " features" << endl;
+
+
 
   //////////////////////////////////////
   // JUST TESTING
@@ -201,10 +209,27 @@ int main(int argc, char** argv) {
   float feature_value;
 
   for (vector<Rect>::iterator it = f.rectangles.begin(); it != f.rectangles.end(); it++) {
-    feature_value += it->multiplier * test_sample.integral_sum(it->x, it->y, it->x + it->width - 1, it->y + it->height - 1);
+    feature_value += it->multiplier * test_sample.scaled_integral_sum(it->x, it->y, it->x + it->width - 1, it->y + it->height - 1, test_cloud->width);
   }
 
   cout << "Feature value: " << feature_value << endl;
+
+  //////////////////////////////////////
+  // END JUST TESTING
+  //////////////////////////////////////
+
+
+
+  Feature feature = features.at(16060800);
+
+  vector<FeatureValue> feature_values;
+
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    FeatureValue feature_value(feature, *sample);
+    feature_values.push_back(feature_value);
+  }
+
+  //sort(feature_values.begin(), feature_values.end());
 
   return 0;
 }
