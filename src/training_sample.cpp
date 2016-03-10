@@ -8,14 +8,15 @@ TrainingSample::TrainingSample(PointCloudT::Ptr cloud, bool isPositive) :
   isPositive (isPositive),
   integral_image (new MonochromePointCloudT)
 {
-  calculateIntegralImage();
+  calculateIntegralImage(cloud, integral_image);
+  normalize(integral_image);
 }
 
 TrainingSample::~TrainingSample() {}
 
 /**
  * Calculates integral image. At a specific location (j,k), the integral image
- * can be computed as the algebraic addition the follows:
+ * can be computed as the algebraic addition that follows:
  * +-------+---+
  * |       |   |
  * |   A   | B |
@@ -47,7 +48,7 @@ TrainingSample::~TrainingSample() {}
  * 0|   C   | D |
  * -+-------+---+(j,k)
  */
-void TrainingSample::calculateIntegralImage() {
+void TrainingSample::calculateIntegralImage(PointCloudT::Ptr cloud, MonochromePointCloudT::Ptr integral_image) {
   integral_image->width = cloud->width;
   integral_image->height = cloud->height;
   integral_image->points.resize(cloud->points.size());
@@ -55,7 +56,7 @@ void TrainingSample::calculateIntegralImage() {
 
   for (int k = 0; k < cloud->height; k++) {
     for (int j = 0; j < cloud->width; j++) {
-      // TODO What if 0,0 is NaN? What if another point is Nan?
+      // TODO What if z at 0,0 is NaN? What if another point is Nan?
       // TODO A: I don't care because all that matters are intensities for now.
       // TODO Hint: colors might be NaN too.
       MonochromePointT d;
@@ -67,6 +68,43 @@ void TrainingSample::calculateIntegralImage() {
 
       d.intensity += b + c - a;
       integral_image->at(j, k) = d;
+    }
+  }
+}
+
+/**
+ * Apply variance normalization to the given image.
+ *
+ * Variance normalization transforms the input image so that the result has a
+ * N(0,1) distribution.
+ *
+ * Given image's mean value:
+ *
+ * m = 1/N * sum(X)
+ *
+ * and square variance:
+ *
+ * s^2 = m^2 - 1/N * sum(X^2)
+ *
+ * then the value of a pixel x can be normalized with:
+ *
+ * x_norm = (x - m)/s^2
+ */
+void TrainingSample::normalize(MonochromePointCloudT::Ptr image) {
+  float mean = 1.0f/(image->width * image-> height) * image->at(image->width-1, image->height-1).intensity;
+
+  float square_sum = 0;
+  for (int k = 0; k < image->height; k++) {
+    for (int j = 0; j < image->width; j++) {
+      square_sum += pow(image->at(j,k).intensity, 2);
+    }
+  }
+
+  float variance = pow(mean, 2) - 1.0f/(image->width * image->height) * square_sum;
+
+  for (int k = 0; k < image->height; k++) {
+    for (int j = 0; j < image->width; j++) {
+      image->at(j, k).intensity = (image->at(j, k).intensity - mean) / variance;
     }
   }
 }

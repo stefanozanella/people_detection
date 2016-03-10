@@ -25,7 +25,8 @@ class TrainingSample {
   private:
 
   float integral_sum(int from_x, int from_y, int to_x, int to_y) const;
-  void calculateIntegralImage();
+  void calculateIntegralImage(PointCloudT::Ptr cloud, MonochromePointCloudT::Ptr integral_image);
+  void normalize(MonochromePointCloudT::Ptr integral_image);
 };
 
 #endif

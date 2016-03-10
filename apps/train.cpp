@@ -2,13 +2,14 @@
  * GOAL:
  * [x] load samples
  * [x] calculate samples's integral image
+ * [x] samples normalization
  * [x] generate features
  * [x] verify generated features and feature calculation
- * [ ] SAMPLES NORMALIZATION
  * [ ] select first weak classifier
  *  [ ] for each feature
  *    [x] compute feature value for all samples
- *    [ ] sort feature values
+ *    [x] sort feature values
+ *    [ ] compute optimal threshold
  */
 #include <string>
 #include <iostream>
