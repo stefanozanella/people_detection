@@ -6,9 +6,9 @@
 
 class FeatureValue {
   TrainingSample sample;
-  float value;
 
   public:
+  float value;
   FeatureValue(const Feature& feature, const TrainingSample& sample);
   bool operator<(const FeatureValue& right) const;
 };

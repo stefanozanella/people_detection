@@ -10,8 +10,8 @@ Feature& Feature::operator<<(const Rect &rectangle) {
   return *this;
 }
 
-int Feature::apply(const TrainingSample &sample) const {
-  int feature_value = 0;
+float Feature::apply(const TrainingSample &sample) const {
+  float feature_value = 0;
   for (
     vector<Rect>::const_iterator rectangle = rectangles.begin();
     rectangle != rectangles.end();

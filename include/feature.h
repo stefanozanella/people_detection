@@ -14,7 +14,7 @@ class Feature {
 
   Feature(uint32_t base_size);
   Feature& operator<<(const Rect &rectangle);
-  int apply(const TrainingSample &sample) const;
+  float apply(const TrainingSample &sample) const;
 
   private:
   int base_size;
