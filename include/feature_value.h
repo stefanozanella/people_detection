@@ -5,9 +5,9 @@
 #include "training_sample.h"
 
 class FeatureValue {
+  public:
   TrainingSample sample;
 
-  public:
   float value;
   FeatureValue(const Feature& feature, const TrainingSample& sample);
   bool operator<(const FeatureValue& right) const;
