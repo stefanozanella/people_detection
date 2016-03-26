@@ -6,11 +6,13 @@
  * [x] generate features
  * [x] verify generated features and feature calculation
  * [x] select first weak classifier
+ *   [x] normalize the weights
  *   [x] for each feature
  *     [x] compute feature value for all samples
  *     [x] sort feature values
  *     [x] compute optimal threshold and polarity
  *     TODO Refactor and document
+ *   [ ] update the weights
  */
 #include <string>
 #include <iostream>
@@ -25,6 +27,7 @@
 #include "rect.h"
 #include "feature.h"
 #include "feature_value.h"
+#include "weak_classifier.h"
 
 using std::string;
 using std::cout;
@@ -36,14 +39,75 @@ using pcl::io::loadPCDFile;
 using std::max;
 using std::sort;
 
-int main(int argc, char** argv) {
-  string positive_samples_dir (argv[1]), negative_samples_dir (argv[2]);
+void generate_features(vector<Feature>& features, int window_size) {
+  for (uint32_t x = 0; x < window_size; x++) {
+    for (uint32_t y = 0; y < window_size; y++) {
+      // generate horizontal haar2
+      for (uint32_t dx = 1; 2*dx < window_size - x; dx++) {
+        for (uint32_t dy = 1; dy < window_size - y; dy++) {
+          features.push_back(
+            Feature(window_size) <<
+            Rect(x, y, dx, dy, -1) <<
+            Rect(x + dx, y, dx, dy, 1)
+          );
+        }
+      }
 
+      // generate vertical haar2
+      for (int dx = 1; dx < window_size - x; dx++) {
+        for (int dy = 1; 2*dy < window_size - y; dy++) {
+          features.push_back(
+            Feature(window_size) <<
+            Rect(x, y, dx, dy, -1) <<
+            Rect(x, y + dy, dx, dy, 1)
+          );
+        }
+      }
+
+      // generate horizontal haar3
+      for (int dx = 1; 3*dx < window_size - x; dx++) {
+        for (int dy = 1; dy < window_size - y; dy++) {
+          features.push_back(
+            Feature(window_size) <<
+            Rect(x, y, dx, dy, -1) <<
+            Rect(x + dx, y, dx, dy, 1) <<
+            Rect(x + 2*dx, y, dx, dy, -1)
+          );
+        }
+      }
+
+      // generate vertical haar3
+      for (int dx = 1; dx < window_size - x; dx++) {
+        for (int dy = 1; 3*dy < window_size - y; dy++) {
+          features.push_back(
+            Feature(window_size) <<
+            Rect(x, y, dx, dy, -1) <<
+            Rect(x, y + dy, dx, dy, 1) <<
+            Rect(x, y + 2*dy, dx, dy, -1)
+          );
+        }
+      }
+
+      // generate haar4
+      for (int dx = 1; 4*dx < window_size - x; dx++) {
+        for (int dy = 1; 4*dy < window_size - y; dy++) {
+          features.push_back(
+            Feature(window_size) <<
+            Rect(x, y, dx, dy, -1) <<
+            Rect(x + dx, y, dx, dy, 1) <<
+            Rect(x, y + dy, dx, dy, 1) <<
+            Rect(x + dx, y + dy, dx, dy, -1)
+          );
+        }
+      }
+    }
+  }
+}
+
+int load_samples(vector<TrainingSample>& samples, const string& positive_samples_dir, const string& negative_samples_dir) {
   directory_iterator positive_sample ((path(positive_samples_dir)));
   directory_iterator negative_sample ((path(negative_samples_dir)));
   directory_iterator no_more_samples;
-
-  vector<TrainingSample> samples;
 
   for (; positive_sample != no_more_samples; positive_sample++) {
     PointCloudT::Ptr sample_cloud (new PointCloudT);
@@ -67,133 +131,68 @@ int main(int argc, char** argv) {
     samples.push_back(TrainingSample(sample_cloud, false));
   }
 
-  uint32_t base_win_size = 0;
-  // Invariants:
-  // - samples are square in size (width == height)
-  // - samples are organized
+  return 0;
+}
+
+/**
+ * Invariants:
+ * * samples are square in size (width == height)
+ * * samples are organized clouds
+ */
+uint32_t find_biggest_window(const vector<TrainingSample>& samples) {
+  uint32_t biggest_window_size = 0;
+  for (vector<TrainingSample>::const_iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    // TODO sample->cloud->width => sample->size
+    biggest_window_size = max(biggest_window_size, sample->cloud->width);
+  }
+
+  return biggest_window_size;
+}
+
+void normalize_weights(vector<TrainingSample>& samples) {
+  float positive_cumulative_weight = 0, negative_cumulative_weight = 0;
+
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    base_win_size = max(base_win_size, sample->cloud->width);
+    if (sample->isPositive)
+      positive_cumulative_weight += sample->weight;
+    else
+      negative_cumulative_weight += sample->weight;
   }
 
-  cout << "Base win size for the training set: " << base_win_size << endl;
-
-  int count = 0;
-
-  vector<Feature> features;
-
-  for (uint32_t x = 0; x < base_win_size; x++) {
-    for (uint32_t y = 0; y < base_win_size; y++) {
-      // generate horizontal haar2
-      for (uint32_t dx = 1; 2*dx < base_win_size - x; dx++) {
-        for (uint32_t dy = 1; dy < base_win_size - y; dy++) {
-          features.push_back(
-            Feature(base_win_size) <<
-            Rect(x, y, dx, dy, -1) <<
-            Rect(x + dx, y, dx, dy, 1)
-          );
-          count++;
-        }
-      }
-
-      // generate vertical haar2
-      for (int dx = 1; dx < base_win_size - x; dx++) {
-        for (int dy = 1; 2*dy < base_win_size - y; dy++) {
-          features.push_back(
-            Feature(base_win_size) <<
-            Rect(x, y, dx, dy, -1) <<
-            Rect(x, y + dy, dx, dy, 1)
-          );
-          count++;
-        }
-      }
-
-      // generate horizontal haar3
-      for (int dx = 1; 3*dx < base_win_size - x; dx++) {
-        for (int dy = 1; dy < base_win_size - y; dy++) {
-          features.push_back(
-            Feature(base_win_size) <<
-            Rect(x, y, dx, dy, -1) <<
-            Rect(x + dx, y, dx, dy, 1) <<
-            Rect(x + 2*dx, y, dx, dy, -1)
-          );
-          count++;
-        }
-      }
-
-      // generate vertical haar3
-      for (int dx = 1; dx < base_win_size - x; dx++) {
-        for (int dy = 1; 3*dy < base_win_size - y; dy++) {
-          features.push_back(
-            Feature(base_win_size) <<
-            Rect(x, y, dx, dy, -1) <<
-            Rect(x, y + dy, dx, dy, 1) <<
-            Rect(x, y + 2*dy, dx, dy, -1)
-          );
-          count++;
-        }
-      }
-
-      // generate haar4
-      for (int dx = 1; 4*dx < base_win_size - x; dx++) {
-        for (int dy = 1; 4*dy < base_win_size - y; dy++) {
-          features.push_back(
-            Feature(base_win_size) <<
-            Rect(x, y, dx, dy, -1) <<
-            Rect(x + dx, y, dx, dy, 1) <<
-            Rect(x, y + dy, dx, dy, 1) <<
-            Rect(x + dx, y + dy, dx, dy, -1)
-          );
-          count++;
-        }
-      }
-    }
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    sample->weight /= sample->isPositive ? positive_cumulative_weight : negative_cumulative_weight;
   }
+}
 
-  cout << "Generated " << count << " features" << endl;
+WeakClassifier find_optimal_classifier(vector<TrainingSample>& samples, vector<Feature>& features) {
+  WeakClassifier optimal_classifier;
+  float optimal_error = FLT_MAX;
 
-  Feature* optimal_feature;
-  float optimal_threshold, optimal_error = FLT_MAX;
-  int optimal_polarity;
-
-  for (int k = 0; k < features.size(); k += 1) {
-    //Feature feature = features.at(16060800);
+  for (int k = 0; k < features.size(); k += 1000000) {
     Feature feature = features.at(k);
 
     vector<FeatureValue> feature_values;
 
     for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-      FeatureValue feature_value(feature, *sample);
-      feature_values.push_back(feature_value);
+      feature_values.push_back(FeatureValue(feature, *sample));
     }
 
     sort(feature_values.begin(), feature_values.end());
 
-    float total_positive_weight_sum = 0, total_negative_weigth_sum = 0, positive_below = 0, negative_below = 0;
+    float total_positive_weight_sum = 0, total_negative_weight_sum = 0, positive_below = 0, negative_below = 0;
 
-    // TODO Use actual weights. Compute these two while updating the weights
     for (vector<FeatureValue>::iterator feature_value = feature_values.begin(); feature_value != feature_values.end(); feature_value++) {
-      total_positive_weight_sum += feature_value->sample.isPositive;
-      total_negative_weigth_sum += 1 - feature_value->sample.isPositive;
+      total_positive_weight_sum += feature_value->sample.isPositive * feature_value->sample.weight;
+      total_negative_weight_sum += (1 - feature_value->sample.isPositive) * feature_value->sample.weight;
     }
-
-    //cout << "Current T+ and T-: " << total_positive_weight_sum << " - " << total_negative_weigth_sum << endl;
 
     float optimal_threshold_for_this_feature, optimal_error_for_this_feature = FLT_MAX;
     int optimal_polarity_for_this_feature;
     float previous_feature_value = 0;
 
     for (vector<FeatureValue>::iterator feature_value = feature_values.begin(); feature_value != feature_values.end(); feature_value++) {
-      //cout << "********************************" << endl;
-
-      //cout << "Feature value: " << feature_value->value << endl;
-      //cout << "S+: " << positive_below << " - S-: " << negative_below << endl;
-      //cout << "Is positive? " << feature_value->sample.isPositive << endl;
-
-      float error_when_polarity_is_negative = positive_below + total_negative_weigth_sum - negative_below;
+      float error_when_polarity_is_negative = positive_below + total_negative_weight_sum - negative_below;
       float error_when_polarity_is_positive = negative_below + total_positive_weight_sum - positive_below;
-
-      //cout << "Error p > 0: " << error_when_polarity_is_positive << endl;
-      //cout << "Error p < 0: " << error_when_polarity_is_negative << endl;
 
       float optimal_error_for_this_sample;
       int optimal_polarity_for_this_sample;
@@ -234,29 +233,36 @@ int main(int argc, char** argv) {
       // two samples with the same feature value could end up in different order,
       // resulting in a different count of what's below and what's above a
       // certain threshold.
-      positive_below += feature_value->sample.isPositive && (feature_value->value > previous_feature_value);
-      negative_below += (1 - feature_value->sample.isPositive) && (feature_value->value > previous_feature_value);
+      positive_below += (feature_value->sample.isPositive && (feature_value->value > previous_feature_value)) * feature_value->sample.weight;
+      negative_below += ((1 - feature_value->sample.isPositive) && (feature_value->value > previous_feature_value)) * feature_value->sample.weight;
       previous_feature_value = feature_value->value;
-
-      //cout << "********************************" << endl;
     }
 
-    //cout << "Optimal threshold: " << optimal_threshold_for_this_feature << endl;
-    //cout << "Optimal polarity: " << optimal_polarity_for_this_feature << endl;
-    //cout << "Optimal error: " << optimal_error_for_this_feature << endl;
-    //cout << "################################" << endl;
-
     if (optimal_error_for_this_feature < optimal_error) {
-      optimal_feature = &feature;
       optimal_error = optimal_error_for_this_feature;
-      optimal_threshold = optimal_threshold_for_this_feature;
-      optimal_polarity = optimal_polarity_for_this_feature;
+      optimal_classifier = WeakClassifier(feature, optimal_threshold_for_this_feature, optimal_polarity_for_this_feature);
     }
   }
 
-  cout << "Final threshold: " << optimal_threshold << endl;
-  cout << "Final polarity: " << optimal_polarity << endl;
-  cout << "Final error: " << optimal_error << endl;
+  return optimal_classifier;
+}
 
+int main(int argc, char** argv) {
+  vector<TrainingSample> samples;
+  vector<Feature> features;
+
+  if (load_samples(samples, string(argv[1]), string(argv[2])) < 0) {
+    // TODO More informative error
+    return -1;
+  }
+
+  generate_features(features, find_biggest_window(samples));
+  cout << "Generated " << features.size() << " features" << endl;
+
+  normalize_weights(samples);
+
+  WeakClassifier optimal_classifier = find_optimal_classifier(samples, features);
+
+  cout << "Found best classifier: " << optimal_classifier << endl;
   return 0;
 }

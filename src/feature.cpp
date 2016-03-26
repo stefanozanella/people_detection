@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "feature.h"
 
 Feature::Feature(uint32_t base_size) :
@@ -29,4 +30,14 @@ float Feature::apply(const TrainingSample &sample) const {
   }
 
   return feature_value;
+}
+
+std::ostream& operator<<(std::ostream& os, const Feature& feature) {
+  std::copy(
+    feature.rectangles.begin(),
+    feature.rectangles.end(),
+    std::ostream_iterator<Rect>(os, "\n")
+  );
+
+  return os;
 }

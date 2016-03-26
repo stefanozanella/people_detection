@@ -2,6 +2,7 @@
 #define FEATURE_H
 
 #include <vector>
+#include <iostream>
 
 #include "training_sample.h"
 #include "rect.h"
@@ -15,6 +16,8 @@ class Feature {
   Feature(uint32_t base_size);
   Feature& operator<<(const Rect &rectangle);
   float apply(const TrainingSample &sample) const;
+
+  friend std::ostream& operator<<(std::ostream& os, const Feature& feature);
 
   private:
   int base_size;

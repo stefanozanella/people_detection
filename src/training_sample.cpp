@@ -6,7 +6,8 @@
 TrainingSample::TrainingSample(PointCloudT::Ptr cloud, bool isPositive) :
   cloud (cloud),
   isPositive (isPositive),
-  integral_image (new MonochromePointCloudT)
+  integral_image (new MonochromePointCloudT),
+  weight (1.0)
 {
   calculateIntegralImage(cloud, integral_image);
   normalize(integral_image);

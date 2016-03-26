@@ -15,6 +15,7 @@ class TrainingSample {
   PointCloudT::Ptr cloud;
   MonochromePointCloudT::Ptr integral_image;
   bool isPositive;
+  float weight; // TODO Double check if this belongs here
 
   TrainingSample(PointCloudT::Ptr cloud, bool isPositive);
   ~TrainingSample();
