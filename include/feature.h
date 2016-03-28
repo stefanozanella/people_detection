@@ -14,8 +14,8 @@ class Feature {
   vector<Rect> rectangles; // TODO This might become private again
 
   Feature(uint32_t base_size);
-  Feature& operator<<(const Rect &rectangle);
-  float apply(const TrainingSample &sample) const;
+  Feature& operator<<(const Rect& rectangle);
+  float apply(const TrainingSample& sample) const;
 
   friend std::ostream& operator<<(std::ostream& os, const Feature& feature);
 

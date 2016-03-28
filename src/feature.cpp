@@ -5,13 +5,13 @@ Feature::Feature(uint32_t base_size) :
   base_size (base_size)
 {}
 
-Feature& Feature::operator<<(const Rect &rectangle) {
+Feature& Feature::operator<<(const Rect& rectangle) {
   rectangles.push_back(rectangle);
 
   return *this;
 }
 
-float Feature::apply(const TrainingSample &sample) const {
+float Feature::apply(const TrainingSample& sample) const {
   float feature_value = 0;
   for (
     vector<Rect>::const_iterator rectangle = rectangles.begin();

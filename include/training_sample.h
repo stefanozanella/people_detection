@@ -9,6 +9,8 @@ typedef pcl::PointCloud<PointT> PointCloudT;
 typedef pcl::PointXYZI MonochromePointT;
 typedef pcl::PointCloud<MonochromePointT> MonochromePointCloudT;
 
+class WeakClassifier;
+
 class TrainingSample {
   public:
 
