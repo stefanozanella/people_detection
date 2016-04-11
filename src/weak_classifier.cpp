@@ -25,3 +25,11 @@ std::ostream& operator<<(std::ostream& os, const WeakClassifier& classifier) {
     "polarity: " << classifier.polarity <<
     "error: " << classifier.error;
 }
+
+bool WeakClassifier::classify(const TrainingSample& sample) const {
+  return polarity * feature.apply(sample) < polarity * threshold;
+}
+
+float WeakClassifier::error_weight_factor() const {
+  return error / (1 - error);
+}

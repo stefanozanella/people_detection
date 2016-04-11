@@ -248,7 +248,7 @@ WeakClassifier optimal_classifier_for_feature(Feature& feature, vector<TrainingS
 WeakClassifier optimal_classifier(vector<TrainingSample>& samples, vector<Feature>& features) {
   WeakClassifier optimal_classifier;
 
-  for (int k = 0; k < features.size(); k += 1000000) {
+  for (int k = 0; k < features.size(); k += 1000) {
     optimal_classifier = min(
       optimal_classifier,
       optimal_classifier_for_feature(features.at(k), samples)
@@ -256,6 +256,19 @@ WeakClassifier optimal_classifier(vector<TrainingSample>& samples, vector<Featur
   }
 
   return optimal_classifier;
+}
+
+void update_weights(vector<TrainingSample>& samples, const WeakClassifier& classifier) {
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    if (sample->isPositive && !classifier.classify(*sample)) {
+      cout << "Ouch! False negative" << endl;
+    } else if (!sample->isPositive && classifier.classify(*sample)) {
+      cout << "Meh! False positive" << endl;
+    }
+    else {
+      sample->weight *= classifier.error_weight_factor();
+    }
+  }
 }
 
 int main(int argc, char** argv) {
@@ -273,6 +286,8 @@ int main(int argc, char** argv) {
   normalize_weights(samples);
 
   WeakClassifier classifier = optimal_classifier(samples, features);
+
+  update_weights(samples, classifier);
 
   cout << "Found best classifier: " << classifier << endl;
   return 0;
