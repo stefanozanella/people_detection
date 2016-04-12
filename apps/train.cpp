@@ -12,7 +12,13 @@
  *     [x] sort feature values
  *     [x] compute optimal threshold and polarity
  *     TODO Refactor and document
- *   [ ] update the weights
+ *   [x] update the weights
+ * [x] build strong classifier from weak classifiers
+ * [ ] store partial training results
+ * [ ] load eventual partial training results
+ * [ ] skip training partially if results loaded from disk
+ * [ ] threshold lowering for detection rate increase
+ * [ ] **validate approach**
  */
 #include <string>
 #include <iostream>
