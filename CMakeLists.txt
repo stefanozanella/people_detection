@@ -15,7 +15,8 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 add_executable(people_detector apps/main.cpp)
 add_executable(train apps/train.cpp src/training_sample.cpp src/rect.cpp
-  src/feature.cpp src/feature_value.cpp src/weak_classifier.cpp)
+  src/feature.cpp src/feature_value.cpp src/weak_classifier.cpp
+  src/strong_classifier.cpp)
 add_executable(extract_samples apps/extract_samples.cpp src/sample_selector.cpp)
 target_link_libraries(people_detector ${PCL_LIBRARIES})
 target_link_libraries(train ${PCL_LIBRARIES})

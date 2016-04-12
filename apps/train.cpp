@@ -28,6 +28,7 @@
 #include "feature.h"
 #include "feature_value.h"
 #include "weak_classifier.h"
+#include "strong_classifier.h"
 
 using std::string;
 using std::cout;
@@ -283,12 +284,29 @@ int main(int argc, char** argv) {
   generate_features(features, find_biggest_window(samples));
   cout << "Generated " << features.size() << " features" << endl;
 
-  normalize_weights(samples);
+  StrongClassifier strong;
 
-  WeakClassifier classifier = optimal_classifier(samples, features);
+  for (int t = 0; t < 2; t++) {
+    normalize_weights(samples);
+    WeakClassifier weak = optimal_classifier(samples, features);
+    update_weights(samples, weak);
 
-  update_weights(samples, classifier);
+    strong << weak;
 
-  cout << "Found best classifier: " << classifier << endl;
+    cout << "Found best classifier: " << weak << endl;
+  }
+
+  cout << endl << endl;
+
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    if (sample->isPositive && !strong.classify(*sample)) {
+      cout << "Ouch! False negative" << endl;
+    }
+
+    if (!sample->isPositive && strong.classify(*sample)) {
+      cout << "Meh! False positive" << endl;
+    }
+  }
+
   return 0;
 }

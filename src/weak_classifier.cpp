@@ -1,4 +1,5 @@
 #include <cfloat>
+#include <cmath>
 
 #include "weak_classifier.h"
 
@@ -32,4 +33,8 @@ bool WeakClassifier::classify(const TrainingSample& sample) const {
 
 float WeakClassifier::error_weight_factor() const {
   return error / (1 - error);
+}
+
+float WeakClassifier::classification_factor() const {
+  return log(1 / error_weight_factor());
 }
