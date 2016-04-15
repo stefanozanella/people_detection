@@ -32,6 +32,20 @@ float Feature::apply(const TrainingSample& sample) const {
   return feature_value;
 }
 
+void Feature::save(Storage& storage) const {
+  storage.add("base_size", base_size);
+
+  for (
+    vector<Rect>::const_iterator rectangle = rectangles.begin();
+    rectangle != rectangles.end();
+    rectangle++
+  ) {
+    Storage rs;
+    rectangle->save(rs);
+    storage.push_back("rectangles", rs);
+  }
+}
+
 std::ostream& operator<<(std::ostream& os, const Feature& feature) {
   std::copy(
     feature.rectangles.begin(),

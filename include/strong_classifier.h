@@ -5,6 +5,7 @@
 
 #include "training_sample.h"
 #include "weak_classifier.h"
+#include "storage.h"
 
 using std::vector;
 
@@ -17,6 +18,7 @@ class StrongClassifier {
   StrongClassifier();
   StrongClassifier& operator<<(const WeakClassifier& classifier);
   bool classify(const TrainingSample& sample) const;
+  void save(Storage& storage) const;
 };
 
 #endif

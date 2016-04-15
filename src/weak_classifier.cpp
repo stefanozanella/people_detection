@@ -38,3 +38,13 @@ float WeakClassifier::error_weight_factor() const {
 float WeakClassifier::classification_factor() const {
   return log(1 / error_weight_factor());
 }
+
+void WeakClassifier::save(Storage& storage) const {
+  storage.add("threshold", threshold);
+  storage.add("error", error);
+  storage.add("polarity", polarity);
+
+  Storage fs;
+  feature.save(fs);
+  storage.add("feature", fs);
+}

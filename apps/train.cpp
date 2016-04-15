@@ -14,7 +14,8 @@
  *     TODO Refactor and document
  *   [x] update the weights
  * [x] build strong classifier from weak classifiers
- * [ ] store partial training results
+ * [x] store partial training results
+ * TODO extract storing logic into separate classes?
  * [ ] load eventual partial training results
  * [ ] skip training partially if results loaded from disk
  * [ ] threshold lowering for detection rate increase
@@ -35,6 +36,7 @@
 #include "feature_value.h"
 #include "weak_classifier.h"
 #include "strong_classifier.h"
+#include "storage.h"
 
 using std::string;
 using std::cout;
@@ -255,7 +257,7 @@ WeakClassifier optimal_classifier_for_feature(Feature& feature, vector<TrainingS
 WeakClassifier optimal_classifier(vector<TrainingSample>& samples, vector<Feature>& features) {
   WeakClassifier optimal_classifier;
 
-  for (int k = 0; k < features.size(); k += 1000) {
+  for (int k = 0; k < features.size(); k += 10000) {
     optimal_classifier = min(
       optimal_classifier,
       optimal_classifier_for_feature(features.at(k), samples)
@@ -276,6 +278,12 @@ void update_weights(vector<TrainingSample>& samples, const WeakClassifier& class
       sample->weight *= classifier.error_weight_factor();
     }
   }
+}
+
+void save_training_results(StrongClassifier classifier, string file) {
+  Storage storage;
+  classifier.save(storage);
+  storage.persist(file);
 }
 
 int main(int argc, char** argv) {
@@ -301,6 +309,8 @@ int main(int argc, char** argv) {
 
     cout << "Found best classifier: " << weak << endl;
   }
+
+  save_training_results(strong, "strong.yml");
 
   cout << endl << endl;
 
