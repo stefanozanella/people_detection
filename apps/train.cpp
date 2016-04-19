@@ -16,9 +16,9 @@
  * [x] build strong classifier from weak classifiers
  * [x] store partial training results
  * TODO extract storing logic into separate classes?
- * [ ] load eventual partial training results
- * [ ] skip training partially if results loaded from disk
- * [ ] threshold lowering for detection rate increase
+ * [x] load eventual partial training results
+ * [x] skip training partially if results loaded from disk
+ * [x] threshold lowering for detection rate increase
  * [ ] **validate approach**
  */
 #include <string>
@@ -44,6 +44,7 @@ using std::endl;
 using std::vector;
 using boost::filesystem::path;
 using boost::filesystem::directory_iterator;
+using boost::filesystem::is_regular_file;
 using pcl::io::loadPCDFile;
 using std::max;
 using std::min;
@@ -257,7 +258,7 @@ WeakClassifier optimal_classifier_for_feature(Feature& feature, vector<TrainingS
 WeakClassifier optimal_classifier(vector<TrainingSample>& samples, vector<Feature>& features) {
   WeakClassifier optimal_classifier;
 
-  for (int k = 0; k < features.size(); k += 10000) {
+  for (int k = 0; k < features.size(); k += 1) {
     optimal_classifier = min(
       optimal_classifier,
       optimal_classifier_for_feature(features.at(k), samples)
@@ -280,10 +281,49 @@ void update_weights(vector<TrainingSample>& samples, const WeakClassifier& class
   }
 }
 
-void save_training_results(StrongClassifier classifier, string file) {
+void save_training_results(StrongClassifier& classifier, const string& file) {
   Storage storage;
   classifier.save(storage);
   storage.persist(file);
+}
+
+bool load_trained_detector(const string& filename, StrongClassifier& classifier) {
+  if (!is_regular_file(filename)) {
+    return false;
+  }
+
+  YAML::Node params = YAML::LoadFile(filename);
+
+  for (
+    YAML::const_iterator weak = params["weak_classifiers"].begin();
+    weak != params["weak_classifiers"].end();
+    weak++
+  ) {
+    Feature feature ((*weak)["feature"]["base_size"].as<int>());
+
+    for (
+      YAML::const_iterator rect = (*weak)["feature"]["rectangles"].begin();
+      rect != (*weak)["feature"]["rectangles"].end();
+      rect++
+    ) {
+      feature << Rect(
+        (*rect)["x"].as<int>(),
+        (*rect)["y"].as<int>(),
+        (*rect)["width"].as<int>(),
+        (*rect)["height"].as<int>(),
+        (*rect)["multiplier"].as<int>()
+      );
+    }
+
+    classifier << WeakClassifier(
+      feature,
+      (*weak)["threshold"].as<float>(),
+      (*weak)["polarity"].as<int>(),
+      (*weak)["error"].as<float>()
+    );
+  }
+
+  return true;
 }
 
 int main(int argc, char** argv) {
@@ -300,19 +340,19 @@ int main(int argc, char** argv) {
 
   StrongClassifier strong;
 
-  for (int t = 0; t < 2; t++) {
-    normalize_weights(samples);
-    WeakClassifier weak = optimal_classifier(samples, features);
-    update_weights(samples, weak);
+  if (!load_trained_detector("face_detector.yml", strong)) {
+    for (int t = 0; t < 2; t++) {
+      normalize_weights(samples);
+      WeakClassifier weak = optimal_classifier(samples, features);
+      update_weights(samples, weak);
 
-    strong << weak;
+      strong << weak;
 
-    cout << "Found best classifier: " << weak << endl;
+      cout << "Found best classifier: " << weak << endl;
+    }
+
+    save_training_results(strong, "face_detector.yml");
   }
-
-  save_training_results(strong, "strong.yml");
-
-  cout << endl << endl;
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
     if (sample->isPositive && !strong.classify(*sample)) {
@@ -323,6 +363,60 @@ int main(int argc, char** argv) {
       cout << "Meh! False positive" << endl;
     }
   }
+
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    if (sample->isPositive && !strong.classify(*sample)) {
+      strong.force_detection(*sample);
+    }
+  }
+
+  save_training_results(strong, "face_detector.yml");
+
+  cout << "~~~~~~~~~~~" << endl;
+
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    if (sample->isPositive && !strong.classify(*sample)) {
+      cout << "Ouch! False negative" << endl;
+    }
+
+    if (!sample->isPositive && strong.classify(*sample)) {
+      cout << "Meh! False positive" << endl;
+    }
+  }
+
+  // DEFINITIONS:
+  // false positive rate = sum(false positives) / sum(negative samples)
+  // detection rate = sum(positive detection) / sum(positive samples)
+  //
+  // f = maximum acceptable false positive rate per layer
+  // d = minimum acceptable detection rate per layer
+  // F_target = target overall false positive rate
+  // F_0 = 1.0 = current false positive rate
+  // while F_i > F_target
+  //  F_i = F_i-1
+  //  n_i = 0
+  //  while F_i > f * F_i-1
+  //    n_i++
+  //    train a strong classifier with n_i features
+  //    evaluate F_i and D_i for trained strong classifier
+  //    decrease threshold for the last classifier until the current *cascaded classifier* has a detection rate of at least d * D_i-1
+  //  empty set of negative example
+  //  if F_i > F_target
+  //    evaluate current cascaded detector on set of non-face and put any false detection into the set of negative examples
+
+  // f = maximum acceptable false positive rate per layer
+  // d = minimum acceptable detection rate per layer
+  // F_target = target overall false positive rate
+  // F = 1.0 = current false positive rate
+  // while F > F_target
+  //  F_tmp = F
+  //  n_i = 0
+  //  while F_tmp > f * F (or "while FPR of the layer > f" ?)
+  //    n_i++
+  //    train a strong classifier with n_i features
+  //    evaluate F_tmp and D_i for trained *cascaded classifier*
+  //    decrease threshold for the last classifier until the current *cascaded classifier* has a detection rate of at least d * D_i-1
+  //  F = F_tmp
 
   return 0;
 }
