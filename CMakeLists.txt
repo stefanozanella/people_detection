@@ -13,7 +13,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
-add_executable(people_detector apps/main.cpp)
+add_executable(people_detector apps/people_detector.cpp)
 add_executable(train apps/train.cpp src/training_sample.cpp src/rect.cpp
   src/feature.cpp src/feature_value.cpp src/weak_classifier.cpp
   src/strong_classifier.cpp src/storage.cpp)
