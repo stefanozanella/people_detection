@@ -4,7 +4,7 @@
 #include <vector>
 #include <iostream>
 
-#include "training_sample.h"
+#include "sample.h"
 #include "rect.h"
 #include "storage.h"
 
@@ -16,7 +16,7 @@ class Feature {
 
   Feature(uint32_t base_size);
   Feature& operator<<(const Rect& rectangle);
-  float apply(const TrainingSample& sample) const;
+  float apply(const Sample& sample) const;
   void save(Storage& storage) const;
 
   friend std::ostream& operator<<(std::ostream& os, const Feature& feature);

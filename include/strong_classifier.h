@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "training_sample.h"
+#include "sample.h"
 #include "weak_classifier.h"
 #include "storage.h"
 
@@ -13,14 +13,14 @@ class StrongClassifier {
   vector<WeakClassifier> classifiers;
   float threshold;
 
-  float classification_value(const TrainingSample& sample) const;
+  float classification_value(const Sample& sample) const;
 
   public:
 
   StrongClassifier();
   StrongClassifier& operator<<(const WeakClassifier& classifier);
-  bool classify(const TrainingSample& sample) const;
-  void force_detection(const TrainingSample& sample);
+  bool is_face(const Sample& sample) const;
+  void force_detection(const Sample& sample);
   void save(Storage& storage) const;
 };
 

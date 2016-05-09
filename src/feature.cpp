@@ -11,7 +11,7 @@ Feature& Feature::operator<<(const Rect& rectangle) {
   return *this;
 }
 
-float Feature::apply(const TrainingSample& sample) const {
+float Feature::apply(const Sample& sample) const {
   float feature_value = 0;
   for (
     vector<Rect>::const_iterator rectangle = rectangles.begin();
@@ -20,7 +20,7 @@ float Feature::apply(const TrainingSample& sample) const {
   ) {
     feature_value +=
       rectangle->multiplier *
-      sample.scaled_integral_sum(
+      sample.area_sum(
         rectangle->x,
         rectangle->y,
         rectangle->x + rectangle->width - 1,

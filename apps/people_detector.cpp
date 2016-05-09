@@ -1,10 +1,8 @@
 /**
  * GOAL:
- * [ ] load detector
- * [ ] normalize sample
- * [ ] calculate integral image of sample
+ * [x] load detector
  * [x] "sliding window"
- * [ ] detect face on each sub-window
+ * [~] detect face on each sub-window
  * [ ] visualize bounding box on detected faces
  */
 #include <string>
@@ -14,10 +12,18 @@
 #include <boost/filesystem.hpp>
 
 #include <pcl/io/pcd_io.h>
+#include <pcl/visualization/pcl_visualizer.h>
+
+#include "strong_classifier.h"
+#include "load_trained_detector.h"
+#include "sub_window.h"
+
+#include "training_sample.h"
 
 using std::string;
 using std::cout;
 using std::endl;
+using std::vector;
 using pcl::io::loadPCDFile;
 using boost::filesystem::path;
 using boost::filesystem::directory_iterator;
@@ -25,9 +31,14 @@ using boost::filesystem::directory_iterator;
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
 
-void find_people(const PointCloudT::Ptr sample) {
+void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector) {
+  SubWindow sub_window (sample);
+
   int x = 0, y = 0, current_win_size;
   const int base_win_size = 148; // TODO
+
+  int pos = 0, neg = 0;
+  vector<Rect> faces;
 
   while (y < sample->height) {
     while (x < sample->width) {
@@ -46,7 +57,14 @@ void find_people(const PointCloudT::Ptr sample) {
       int y_to = y + ceil(current_win_size / 2.0);
 
       if (x_from >= 0 && x_to < sample->width && y_from >= 0 && y_to < sample->height) {
-        // TODO DO THE STUFF
+        sub_window.crop(x_from, y_from, current_win_size);
+
+        if (detector.is_face(sub_window)) {
+          faces.push_back(Rect(x_from, y_from, x_to - x_from, y_to - y_from, 1));
+          pos++;
+        } else {
+          neg++;
+        }
       }
 
       x++; // TODO Maybe it's possible to move forward faster?
@@ -55,9 +73,30 @@ void find_people(const PointCloudT::Ptr sample) {
     y++; // TODO Maybe it's possible to move forward faster?
     x = 0;
   }
+
+  cout << "Positive: " << pos << " - Negative: " << neg << endl;
+
+  pcl::visualization::PCLVisualizer viewer("PCL Viewer");
+  viewer.setCameraPosition(0,0,-2,0,-1,0,0);
+
+  pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(sample);
+
+  viewer.addPointCloud<PointT>(
+    sample,
+    rgb,
+    "sample"
+  );
+
+  viewer.spin();
 }
 
 int main(int argc, char** argv) {
+  StrongClassifier detector;
+  if (!load_trained_detector("face_detector.yml", detector)) {
+    cout << "Couldn't load classifier" << endl;
+    return -1;
+  }
+
   directory_iterator sample ((path(string(argv[1]))));
   directory_iterator no_more_samples;
 
@@ -69,7 +108,21 @@ int main(int argc, char** argv) {
       return -1;
     }
 
-    find_people(sample_cloud);
+    find_people(sample_cloud, detector);
+
+    //PointCloudT::Ptr test_cloud (new PointCloudT);
+    //ExtractIndices extractor(false);
+    //extractor.setInputCloud(sample_cloud);
+    //extractor.setIndices(101, 201, 45, 45);
+    //extractor.filter(*test_cloud);
+    //test_cloud->width = test_cloud->height = 45;
+    //std::cout << test_cloud->at(0, 0) << std::endl;
+    //std::cout << test_cloud->at(test_cloud->height-1, 0) << std::endl;
+    //std::cout << test_cloud->at(0, test_cloud->width-1) << std::endl;
+    //std::cout << test_cloud->at(test_cloud->height-1, test_cloud->width-1) << std::endl;
+    //TrainingSample test (test_cloud, true);
+    //SubWindow sw (sample_cloud);
+    //sw.crop(101, 201, 45);
   }
 
   return 0;

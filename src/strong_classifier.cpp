@@ -11,7 +11,7 @@ StrongClassifier& StrongClassifier::operator<<(const WeakClassifier& classifier)
   return *this;
 }
 
-float StrongClassifier::classification_value(const TrainingSample& sample) const {
+float StrongClassifier::classification_value(const Sample& sample) const {
   float classification_value = 0;
 
   for (vector<WeakClassifier>::const_iterator classifier = classifiers.begin(); classifier != classifiers.end(); classifier++) {
@@ -21,11 +21,11 @@ float StrongClassifier::classification_value(const TrainingSample& sample) const
   return classification_value;
 }
 
-bool StrongClassifier::classify(const TrainingSample& sample) const {
+bool StrongClassifier::is_face(const Sample& sample) const {
   return classification_value(sample) >= threshold;
 }
 
-void StrongClassifier::force_detection(const TrainingSample& sample) {
+void StrongClassifier::force_detection(const Sample& sample) {
   threshold = classification_value(sample);
 }
 

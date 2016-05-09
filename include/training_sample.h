@@ -4,30 +4,23 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
-typedef pcl::PointXYZRGB PointT;
-typedef pcl::PointCloud<PointT> PointCloudT;
-typedef pcl::PointXYZI MonochromePointT;
-typedef pcl::PointCloud<MonochromePointT> MonochromePointCloudT;
+#include "sample.h"
+#include "integral_image.h"
 
-class TrainingSample {
-  public:
+class TrainingSample : public Sample {
+  IntegralImage integral_image;
+  float variance;
 
-  PointCloudT::Ptr cloud;
-  MonochromePointCloudT::Ptr integral_image;
-  bool isPositive;
-  float weight; // TODO Double check if this belongs here
-
-  TrainingSample(PointCloudT::Ptr cloud, bool isPositive);
-  ~TrainingSample();
-
-  float scaled_integral_sum(int from_x, int from_y, int to_x, int to_y, uint32_t base_size) const;
   int scaled_coordinate(int coordinate, uint32_t base_size) const;
 
-  private:
+  public:
 
-  float integral_sum(int from_x, int from_y, int to_x, int to_y) const;
-  void calculateIntegralImage(PointCloudT::Ptr cloud, MonochromePointCloudT::Ptr integral_image);
-  void normalize(MonochromePointCloudT::Ptr integral_image);
+  bool isPositive;
+  float weight;
+  uint32_t size;
+
+  TrainingSample(PointCloudT::Ptr cloud, bool isPositive);
+  float area_sum(int from_x, int from_y, int to_x, int to_y, uint32_t base_size) const;
 };
 
 #endif

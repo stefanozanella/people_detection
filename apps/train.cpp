@@ -37,6 +37,7 @@
 #include "weak_classifier.h"
 #include "strong_classifier.h"
 #include "storage.h"
+#include "load_trained_detector.h"
 
 using std::string;
 using std::cout;
@@ -44,7 +45,6 @@ using std::endl;
 using std::vector;
 using boost::filesystem::path;
 using boost::filesystem::directory_iterator;
-using boost::filesystem::is_regular_file;
 using pcl::io::loadPCDFile;
 using std::max;
 using std::min;
@@ -153,8 +153,7 @@ int load_samples(vector<TrainingSample>& samples, const string& positive_samples
 uint32_t find_biggest_window(const vector<TrainingSample>& samples) {
   uint32_t biggest_window_size = 0;
   for (vector<TrainingSample>::const_iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    // TODO sample->cloud->width => sample->size
-    biggest_window_size = max(biggest_window_size, sample->cloud->width);
+    biggest_window_size = max(biggest_window_size, sample->size);
   }
 
   return biggest_window_size;
@@ -287,45 +286,6 @@ void save_training_results(StrongClassifier& classifier, const string& file) {
   storage.persist(file);
 }
 
-bool load_trained_detector(const string& filename, StrongClassifier& classifier) {
-  if (!is_regular_file(filename)) {
-    return false;
-  }
-
-  YAML::Node params = YAML::LoadFile(filename);
-
-  for (
-    YAML::const_iterator weak = params["weak_classifiers"].begin();
-    weak != params["weak_classifiers"].end();
-    weak++
-  ) {
-    Feature feature ((*weak)["feature"]["base_size"].as<int>());
-
-    for (
-      YAML::const_iterator rect = (*weak)["feature"]["rectangles"].begin();
-      rect != (*weak)["feature"]["rectangles"].end();
-      rect++
-    ) {
-      feature << Rect(
-        (*rect)["x"].as<int>(),
-        (*rect)["y"].as<int>(),
-        (*rect)["width"].as<int>(),
-        (*rect)["height"].as<int>(),
-        (*rect)["multiplier"].as<int>()
-      );
-    }
-
-    classifier << WeakClassifier(
-      feature,
-      (*weak)["threshold"].as<float>(),
-      (*weak)["polarity"].as<int>(),
-      (*weak)["error"].as<float>()
-    );
-  }
-
-  return true;
-}
-
 int main(int argc, char** argv) {
   vector<TrainingSample> samples;
   vector<Feature> features;
@@ -355,17 +315,17 @@ int main(int argc, char** argv) {
   }
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive && !strong.classify(*sample)) {
+    if (sample->isPositive && !strong.is_face(*sample)) {
       cout << "Ouch! False negative" << endl;
     }
 
-    if (!sample->isPositive && strong.classify(*sample)) {
+    if (!sample->isPositive && strong.is_face(*sample)) {
       cout << "Meh! False positive" << endl;
     }
   }
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive && !strong.classify(*sample)) {
+    if (sample->isPositive && !strong.is_face(*sample)) {
       strong.force_detection(*sample);
     }
   }
@@ -375,11 +335,11 @@ int main(int argc, char** argv) {
   cout << "~~~~~~~~~~~" << endl;
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive && !strong.classify(*sample)) {
+    if (sample->isPositive && !strong.is_face(*sample)) {
       cout << "Ouch! False negative" << endl;
     }
 
-    if (!sample->isPositive && strong.classify(*sample)) {
+    if (!sample->isPositive && strong.is_face(*sample)) {
       cout << "Meh! False positive" << endl;
     }
   }
