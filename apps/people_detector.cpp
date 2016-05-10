@@ -3,7 +3,7 @@
  * [x] load detector
  * [x] "sliding window"
  * [~] detect face on each sub-window
- * [ ] visualize bounding box on detected faces
+ * [~] visualize bounding box on detected faces
  */
 #include <string>
 #include <iostream>
@@ -13,6 +13,8 @@
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/common/common.h>
+#include <pcl/filters/extract_indices.h>
 
 #include "strong_classifier.h"
 #include "load_trained_detector.h"
@@ -30,6 +32,7 @@ using boost::filesystem::directory_iterator;
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
+typedef pcl::ExtractIndices<PointT> ExtractIndices;
 
 void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector) {
   SubWindow sub_window (sample);
@@ -67,10 +70,10 @@ void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector
         }
       }
 
-      x++; // TODO Maybe it's possible to move forward faster?
+      x+=10; // TODO Maybe it's possible to move forward faster?
     }
 
-    y++; // TODO Maybe it's possible to move forward faster?
+    y+=10; // TODO Maybe it's possible to move forward faster?
     x = 0;
   }
 
@@ -86,6 +89,28 @@ void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector
     rgb,
     "sample"
   );
+
+  for (int k = 0; k < faces.size(); k++) {
+    Rect face = faces.at(k);
+    PointCloudT::Ptr face_cloud (new PointCloudT);
+
+    ExtractIndices ei (false);
+    ei.setInputCloud(sample);
+    ei.setIndices(face.y, face.x, face.height, face.width);
+    ei.filter(*face_cloud);
+    PointT min, max;
+    pcl::getMinMax3D(*face_cloud, min, max);
+    viewer.addCube(
+      min.x,
+      max.x,
+      min.y,
+      max.y,
+      min.z,
+      max.z,
+      0.0,1.0,0.0,
+      "cube"+boost::to_string(k)
+      );
+  }
 
   viewer.spin();
 }
