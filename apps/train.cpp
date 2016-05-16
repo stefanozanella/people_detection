@@ -1,7 +1,7 @@
 /**
  * GOAL:
  * [x] load samples
- * [x] calculate samples's integral image
+ * [x] calculate samples' integral image
  * [x] samples normalization
  * [x] generate features
  * [x] verify generated features and feature calculation
@@ -20,6 +20,13 @@
  * [x] skip training partially if results loaded from disk
  * [x] threshold lowering for detection rate increase
  * [ ] **validate approach**
+ *   [?] try to reproduce old integral image algorithm where the square sum was
+ *   computed at once and check if results change/improve.
+ * [ ] expand training set
+ *   [ ] add more positive samples
+ *   [ ] add more negative samples
+ *     [?] extract them from detections made by the first stage on the
+ *     validation set?
  */
 #include <string>
 #include <iostream>
