@@ -128,8 +128,14 @@ void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector
 
           current_bucket->push_back(Rect(x_from, y_from, x_to - x_from, y_to - y_from, 1));
 
-          for (int j = x_from; j <= x_to; j++) {
-            for (int k = y_from; k <= y_to; k++) {
+          //for (int j = x_from; j <= x_to; j++) {
+          //  for (int k = y_from; k <= y_to; k++) {
+          //    detection_map[j][k] = current_bucket;
+          //  }
+          //}
+
+          for (int j = x-7; j <= x+7; j++) {
+            for (int k = y-7; k <= y+7; k++) {
               detection_map[j][k] = current_bucket;
             }
           }
@@ -169,30 +175,38 @@ void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector
     for (int i = 0; i < bucket->size(); i++) {
       Rect face = bucket->at(i);
 
-      PointCloudT::Ptr face_cloud (new PointCloudT);
-      ExtractIndices ei (false);
-      ei.setInputCloud(sample);
-      ei.setIndices(face.y, face.x, face.height, face.width);
-      ei.filter(*face_cloud);
-      PointT min, max;
-      pcl::getMinMax3D(*face_cloud, min, max);
-      viewer.addCube(
-          min.x,
-          max.x,
-          min.y,
-          max.y,
-          min.z,
-          max.z,
-          0.0,1.0,0.0,
-          "bucket"+boost::to_string(i)+boost::to_string(k)
-          );
+      //PointCloudT::Ptr face_cloud (new PointCloudT);
+      //ExtractIndices ei (false);
+      //ei.setInputCloud(sample);
+      //ei.setIndices(face.y, face.x, face.height, face.width);
+      //ei.filter(*face_cloud);
+      //PointT min, max;
+      //pcl::getMinMax3D(*face_cloud, min, max);
+      //viewer.addCube(
+      //    min.x,
+      //    max.x,
+      //    min.y,
+      //    max.y,
+      //    min.z,
+      //    max.z,
+      //    0.0,1.0,0.0,
+      //    "bucket"+boost::to_string(i)+boost::to_string(k)
+      //    );
 
       cluster_from_y += face.y;
       cluster_from_x += face.x;
       cluster_to_x += face.x + face.width;
       cluster_to_y += face.y + face.height;
+      //cluster_from_y = std::min(cluster_from_y, face.y);
+      //cluster_from_x = std::min(cluster_from_x, face.x);
+      //cluster_to_y = std::max(cluster_to_y, face.y + face.height);
+      //cluster_to_x = std::max(cluster_to_x, face.x + face.width);
     }
 
+    //cout << cluster_from_x << endl;
+    //cout << cluster_from_y << endl;
+    //cout << cluster_to_x << endl;
+    //cout << cluster_to_y << endl;
     cluster_from_y /= bucket->size();
     cluster_from_x /= bucket->size();
     cluster_to_x /= bucket->size();
