@@ -204,21 +204,34 @@ void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector
     ei.setInputCloud(sample);
     ei.setIndices(cluster_from_y, cluster_from_x, cluster_to_y - cluster_from_y, cluster_to_x - cluster_from_x);
     ei.filter(*face_cloud);
-    PointT min, max;
-    pcl::getMinMax3D(*face_cloud, min, max);
-    viewer.addCube(
-      min.x,
-      max.x,
-      min.y,
-      max.y,
-      min.z,
-      max.z,
-      1.0,0.0,0.0,
-      "cluster"+boost::to_string(k)
-      );
+
+    for (int j = 0; j < face_cloud->width; j++) {
+      PointT& p = face_cloud->at(j);
+      p.r = 255;
+      p.g = p.b = 0;
+    }
+
+    viewer.addPointCloud<PointT>(
+      face_cloud,
+      pcl::visualization::PointCloudColorHandlerRGBField<PointT> (face_cloud),
+      "face"+boost::to_string(k)
+    );
+    //PointT min, max;
+    //pcl::getMinMax3D(*face_cloud, min, max);
+    //viewer.addCube(
+    //  min.x,
+    //  max.x,
+    //  min.y,
+    //  max.y,
+    //  min.z,
+    //  max.z,
+    //  1.0,0.0,0.0,
+    //  "cluster"+boost::to_string(k)
+    //  );
 
     viewer.spin();
     viewer.removeAllShapes();
+    viewer.removePointCloud("face"+boost::to_string(k));
   }
 
   //for (int k = 0; k < faces.size(); k++) {
