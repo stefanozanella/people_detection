@@ -17,17 +17,55 @@
  *   [x] check speed issues -> it's expensive. Just looking at the center of the
  *   window doesn't work at all.
  * [?] the doubt remains that something went wrong as the numbers at the very
- * [ ] detection clustering
- *   [ ] check min/max boundaries, check why it doesn't cluster properly
- *   [ ] try to limit the condition of clustering: set a 10px radius around the
- *   center rather than the whole rectangle
+ * [x] detection clustering
+ *   [x] check min/max boundaries, check why it doesn't cluster properly -> you
+ *   have to set the "from" variable to INT_MAX otherwise they'll always be 0 ->
+ *   not much difference from the average, anyway
+ *   [x] try to limit the condition of clustering: set a 10px radius around the
+ *   center rather than the whole rectangle -> a 14px radius seems to be better
+ *   for now, but it can probably change if the quality of the detector
+ *   improves
  * [ ] improve shifting process
  * [?] find position of detection, bypass the face detection process, work on
  * body detection
+ *   [ ] separate face from background/adjacent objects
+ *     [x] find a way to use the detection made in the original cloud to extract
+ *     the equivalent window in a cloud filtered by a voxel grid (to eliminate
+ *     NaNs and be able to use, e.g., EuclideanClusterExtraction) -> maybe use
+ *     http://docs.pointclouds.org/trunk/classpcl_1_1octree_1_1_octree_point_cloud_search.html#a6f3beb07d39a121bd3a8b450dd972da3
+ *     [x] refactor find_people so that it just returns an array of detected
+ *     faces (rename to find_faces?)
+ *     [x] apply voxel grid over whole cloud
+ *     [x] for each face detection
+ *       [x] find min/max boundaries on the face detection
+ *       [x] apply box search on filtered cloud
+ *       [x] try euclidean distance clustering + selection of cluster with max
+ *       amount of points as detected face ->
+ *       -> I think this approach showed some interesting points, but the
+ *       euclidean clustering algorithm doesn't seem to perform very well.
+ *       Ideas:
+ *         [-] tune euclidean clustering parameters
+ *         [x] explore other segmentation approaches -> region growing seems to work quite well if tuned correctly
+ *           [x] test region growing with other samples, see how it fares -> seems to work quite well, maybe some params can be tuned down a bit
+ *        [ ] implement a variant of region growing that only develops a region
+ *        starting from a seed. Start from the PCL implementation of region
+ *        growing, use the centroid of the detection and see if we manage to
+ *        cover the whole body.
+ *        [ ] once the face region has been segmented, try to use octree radiusSearch to
+ *        iteratively expand the region of interest. Probably there's a need
+ *        of finding some sort of algorithm that decides when to stop,
+ *        to make the whole tolerant to figures next to a background object
+ *        [ ] another approach could be to iteratively search for body portions:
+ *        first, given the head we can look for the torso in a pre-defined box
+ *        area around the face; next, we can try to look for arms and legs in
+ *        predefined areas around the torso (i.e. given a torso, an arm can
+ *        start only from a specific point - more or less, has a definite
+ *        max length and can only move in specific directions)
  */
 #include <string>
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 
 #include <boost/filesystem.hpp>
 
@@ -36,6 +74,11 @@
 #include <pcl/common/common.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/point_types_conversion.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/octree/octree_search.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/features/normal_3d.h>
+#include "pcl/segmentation/single_seed_region_growing.h"
 
 #include "strong_classifier.h"
 #include "load_trained_detector.h"
@@ -48,21 +91,49 @@ using std::cout;
 using std::endl;
 using std::vector;
 using pcl::io::loadPCDFile;
+using pcl::PointXYZ;
 using boost::filesystem::path;
 using boost::filesystem::directory_iterator;
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
 typedef pcl::ExtractIndices<PointT> ExtractIndices;
+typedef pcl::VoxelGrid<PointT> VoxelGrid;
+typedef pcl::octree::OctreePointCloudSearch<PointT> OctreeSearch;
+typedef pcl::search::KdTree<PointT> KdTree;
+typedef pcl::PointCloud<pcl::Normal> NormalCloudT;
+typedef pcl::NormalEstimation<PointT, pcl::Normal> NormalEstimation;
+typedef pcl::SingleSeedRegionGrowing<PointT, pcl::Normal> SingleSeedRegionGrowing;
 
-void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector) {
+typedef struct Face {
+  PointXYZ min_boundary, max_boundary;
+  Face(PointXYZ min, PointXYZ max) : min_boundary (min), max_boundary (max) {}
+} Face;
+
+void bounded_min_max(PointCloudT::Ptr sample, int from_x, int from_y, int to_x, int to_y, PointXYZ& min, PointXYZ& max) {
+  min.x = min.y = min.z = FLT_MAX;
+  max.x = max.y = max.z = FLT_MIN;
+
+  for (int j = from_x; j <= to_x; j++) {
+    for (int k = from_y; k <= to_y; k++) {
+      min.x = std::min(min.x, sample->at(j,k).x);
+      min.y = std::min(min.y, sample->at(j,k).y);
+      min.z = std::min(min.z, sample->at(j,k).z);
+
+      max.x = std::max(max.x, sample->at(j,k).x);
+      max.y = std::max(max.y, sample->at(j,k).y);
+      max.z = std::max(max.z, sample->at(j,k).z);
+    }
+  }
+}
+
+void find_faces(const PointCloudT::Ptr sample, const StrongClassifier& detector, vector<Face>& faces) {
   SubWindow sub_window (sample);
 
   int x = 200, y = 200, current_win_size;
   const int base_win_size = 148; // TODO
 
   int pos = 0, neg = 0;
-  vector<Rect> faces;
   vector<vector<Rect>*> detection_buckets;
   vector<Rect>* detection_map [sample->width][sample->height];
 
@@ -140,7 +211,6 @@ void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector
             }
           }
 
-          faces.push_back(Rect(x_from, y_from, x_to - x_from, y_to - y_from, 1));
           pos++;
         } else {
           neg++;
@@ -154,123 +224,166 @@ void find_people(const PointCloudT::Ptr sample, const StrongClassifier& detector
     x = 200;
   }
 
-  cout << "Positive: " << pos << " - Negative: " << neg << endl;
-  cout << "Clusters: " << detection_buckets.size() << endl;
+  for (vector<vector<Rect>*>::iterator bucket = detection_buckets.begin(); bucket != detection_buckets.end(); bucket++) {
+    int cluster_from_y = 0, cluster_from_x = 0, cluster_to_x = 0, cluster_to_y = 0;
 
+    for (vector<Rect>::iterator face = (*bucket)->begin(); face != (*bucket)->end(); face++) {
+      cluster_from_y += face->y;
+      cluster_from_x += face->x;
+      cluster_to_x += face->x + face->width;
+      cluster_to_y += face->y + face->height;
+    }
+
+    cluster_from_y /= (*bucket)->size();
+    cluster_from_x /= (*bucket)->size();
+    cluster_to_x /= (*bucket)->size();
+    cluster_to_y /= (*bucket)->size();
+
+    PointXYZ face_min_boundary, face_max_boundary;
+    bounded_min_max(sample, cluster_from_x, cluster_from_y, cluster_to_x, cluster_to_y, face_min_boundary, face_max_boundary);
+
+    faces.push_back(Face(face_min_boundary, face_max_boundary));
+  }
+}
+
+void show_faces(PointCloudT::Ptr& sample, vector<Face>& faces) {
   pcl::visualization::PCLVisualizer viewer("PCL Viewer");
   viewer.setCameraPosition(0,0,-2,0,-1,0,0);
 
-  pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(sample);
-
   viewer.addPointCloud<PointT>(
     sample,
-    rgb,
+    pcl::visualization::PointCloudColorHandlerRGBField<PointT>(sample),
     "sample"
   );
 
-  for (int k = 0; k < detection_buckets.size(); k++) {
-    vector<Rect>* bucket = detection_buckets.at(k);
-    int cluster_from_y = 0, cluster_from_x = 0, cluster_to_x = 0, cluster_to_y = 0;
+  OctreeSearch octree (32.0f);
+  octree.setInputCloud(sample);
+  octree.addPointsFromInputCloud();
 
-    for (int i = 0; i < bucket->size(); i++) {
-      Rect face = bucket->at(i);
-
-      //PointCloudT::Ptr face_cloud (new PointCloudT);
-      //ExtractIndices ei (false);
-      //ei.setInputCloud(sample);
-      //ei.setIndices(face.y, face.x, face.height, face.width);
-      //ei.filter(*face_cloud);
-      //PointT min, max;
-      //pcl::getMinMax3D(*face_cloud, min, max);
-      //viewer.addCube(
-      //    min.x,
-      //    max.x,
-      //    min.y,
-      //    max.y,
-      //    min.z,
-      //    max.z,
-      //    0.0,1.0,0.0,
-      //    "bucket"+boost::to_string(i)+boost::to_string(k)
-      //    );
-
-      cluster_from_y += face.y;
-      cluster_from_x += face.x;
-      cluster_to_x += face.x + face.width;
-      cluster_to_y += face.y + face.height;
-      //cluster_from_y = std::min(cluster_from_y, face.y);
-      //cluster_from_x = std::min(cluster_from_x, face.x);
-      //cluster_to_y = std::max(cluster_to_y, face.y + face.height);
-      //cluster_to_x = std::max(cluster_to_x, face.x + face.width);
-    }
-
-    //cout << cluster_from_x << endl;
-    //cout << cluster_from_y << endl;
-    //cout << cluster_to_x << endl;
-    //cout << cluster_to_y << endl;
-    cluster_from_y /= bucket->size();
-    cluster_from_x /= bucket->size();
-    cluster_to_x /= bucket->size();
-    cluster_to_y /= bucket->size();
+  int k;
+  vector<Face>::iterator face;
+  for (k = 0, face = faces.begin(); face != faces.end(); k++, face++) {
+    vector<int> indices;
+    octree.boxSearch(
+      Eigen::Vector3f(face->min_boundary.x, face->min_boundary.y, face->min_boundary.z),
+      Eigen::Vector3f(face->max_boundary.x, face->max_boundary.y, face->max_boundary.z),
+      indices
+    );
 
     PointCloudT::Ptr face_cloud (new PointCloudT);
 
-    ExtractIndices ei (false);
-    ei.setInputCloud(sample);
-    ei.setIndices(cluster_from_y, cluster_from_x, cluster_to_y - cluster_from_y, cluster_to_x - cluster_from_x);
-    ei.filter(*face_cloud);
-
-    for (int j = 0; j < face_cloud->width; j++) {
-      PointT& p = face_cloud->at(j);
+    for (vector<int>::iterator index = indices.begin(); index != indices.end(); index++) {
+      PointT p = sample->at(*index);
       p.r = 255;
       p.g = p.b = 0;
+      face_cloud->points.push_back(p);
     }
 
     viewer.addPointCloud<PointT>(
       face_cloud,
-      pcl::visualization::PointCloudColorHandlerRGBField<PointT> (face_cloud),
+      pcl::visualization::PointCloudColorHandlerRGBField<PointT>(face_cloud),
       "face"+boost::to_string(k)
     );
-    //PointT min, max;
-    //pcl::getMinMax3D(*face_cloud, min, max);
-    //viewer.addCube(
-    //  min.x,
-    //  max.x,
-    //  min.y,
-    //  max.y,
-    //  min.z,
-    //  max.z,
-    //  1.0,0.0,0.0,
-    //  "cluster"+boost::to_string(k)
-    //  );
 
     viewer.spin();
     viewer.removeAllShapes();
     viewer.removePointCloud("face"+boost::to_string(k));
   }
+}
 
-  //for (int k = 0; k < faces.size(); k++) {
-  //  Rect face = faces.at(k);
-  //  PointCloudT::Ptr face_cloud (new PointCloudT);
+void find_bodies(PointCloudT::Ptr& cloud, vector<Face>& faces) {
+  // TODO Doesn't belong here, remove
+  pcl::visualization::PCLVisualizer viewer("PCL Viewer");
+  viewer.setCameraPosition(0,0,-2,0,-1,0,0);
 
-  //  ExtractIndices ei (false);
-  //  ei.setInputCloud(sample);
-  //  ei.setIndices(face.y, face.x, face.height, face.width);
-  //  ei.filter(*face_cloud);
-  //  PointT min, max;
-  //  pcl::getMinMax3D(*face_cloud, min, max);
-  //  viewer.addCube(
-  //    min.x,
-  //    max.x,
-  //    min.y,
-  //    max.y,
-  //    min.z,
-  //    max.z,
-  //    0.0,1.0,0.0,
-  //    "cube"+boost::to_string(k)
-  //    );
-  //}
+  viewer.addPointCloud<PointT>(
+    cloud,
+    pcl::visualization::PointCloudColorHandlerRGBField<PointT>(cloud),
+    "cloud"
+  );
+  // TODO Doesn't belong here, remove
 
-  //viewer.spin();
+
+  OctreeSearch octree (32.0f);
+  octree.setInputCloud(cloud);
+  octree.addPointsFromInputCloud();
+
+  KdTree::Ptr tree (new KdTree);
+  tree->setInputCloud(cloud);
+
+  NormalCloudT::Ptr normals (new NormalCloudT);
+  NormalEstimation normal_estimation;
+  normal_estimation.setSearchMethod(tree);
+  normal_estimation.setInputCloud(cloud);
+  normal_estimation.setKSearch(50);
+  normal_estimation.compute(*normals);
+
+  SingleSeedRegionGrowing reg;
+  reg.setMinClusterSize(200);
+  reg.setMaxClusterSize(1000000);
+  reg.setNumberOfNeighbours(60);
+  reg.setSmoothnessThreshold(15.0 / 180.0 * M_PI);
+  reg.setCurvatureThreshold(1.0);
+  reg.setSearchMethod(tree);
+  reg.setInputCloud(cloud);
+  reg.setInputNormals(normals);
+
+  int j = 0;
+  for (vector<Face>::iterator face = faces.begin(); face != faces.end(); face++) {
+    vector<int> indices;
+    octree.boxSearch(
+      Eigen::Vector3f(face->min_boundary.x, face->min_boundary.y, face->min_boundary.z),
+      Eigen::Vector3f(face->max_boundary.x, face->max_boundary.y, face->max_boundary.z),
+      indices
+    );
+
+    reg.setIndices(boost::shared_ptr<vector<int> >(new vector<int>(indices)));
+
+    // TODO Just trying out stuff, redo properly
+    vector<pcl::PointIndices> cluster_indices;
+    reg.extract(cluster_indices);
+
+    PointCloudT::Ptr face_cloud (new PointCloudT);
+
+    for (vector<int>::iterator index = indices.begin(); index != indices.end(); index++) {
+      PointT p = cloud->at(*index);
+      p.r = 255;
+      p.g = p.b = 0;
+      face_cloud->points.push_back(p);
+    }
+
+    viewer.addPointCloud<PointT>(
+      face_cloud,
+      pcl::visualization::PointCloudColorHandlerRGBField<PointT>(face_cloud),
+      "face"+boost::to_string(j)
+    );
+    int k = 0;
+    const vector<int>* biggest_cluster = &(cluster_indices[0].indices);
+    for (vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it) {
+      if (it->indices.size() > biggest_cluster->size())
+        biggest_cluster = &(it->indices);
+    }
+
+    PointCloudT::Ptr cluster_cloud (new PointCloudT);
+    for (vector<int>::const_iterator pit = biggest_cluster->begin (); pit != biggest_cluster->end (); ++pit) {
+      PointT p = cloud->at(*pit);
+      p.b = 255;
+      p.r = p.g = 0;
+      cluster_cloud->points.push_back(p);
+    }
+
+    viewer.addPointCloud<PointT>(
+        cluster_cloud,
+        pcl::visualization::PointCloudColorHandlerRGBField<PointT>(cluster_cloud),
+        "cluster"+boost::to_string(k)
+        );
+
+    viewer.spin();
+    viewer.removePointCloud("cluster"+boost::to_string(k));
+    k++;
+    viewer.removePointCloud("face"+boost::to_string(j));
+    j++;
+  }
 }
 
 int main(int argc, char** argv) {
@@ -291,72 +404,23 @@ int main(int argc, char** argv) {
       return -1;
     }
 
-    find_people(sample_cloud, detector);
+    vector<Face> faces;
+    find_faces(sample_cloud, detector, faces);
+
+    PointCloudT::Ptr filtered_cloud (new PointCloudT);
+    VoxelGrid voxel;
+    voxel.setInputCloud(sample_cloud);
+    voxel.setLeafSize(0.01, 0.01, 0.01);
+    voxel.filter(*filtered_cloud);
+
+    //show_faces(filtered_cloud, faces);
+
+    find_bodies(filtered_cloud, faces);
   }
 
   return 0;
 }
-
-//#include <pcl/filters/extract_indices.h>
-//#include <pcl/visualization/pcl_visualizer.h>
-//
-//typedef pcl::PointXYZI MonochromePointT;
-//typedef pcl::PointCloud<MonochromePointT> MonochromePointCloudT;
-//
-//int main(int argc, char** argv) {
-//  if (argc < 2) {
-//    cout << "Usage: " << argv[0] << " <point_cloud_file>" << endl;
-//    exit(1);
-//  }
-//
-//  /////////////////////////////////////////////////////////////////////////////
-//  // Sliding window
-//  /////////////////////////////////////////////////////////////////////////////
-//
-//  int window_width = 64;
-//  int window_height = 64;
-//  int step_size = 64;
-//
 //  //int k = 30, j = 264; // Face 1 img 25
 //  //int k = 100, j = 300; // Face 2 img 25
 //  //int k = 80, j = 350; // Face 3 img 25
 //  // int k = 70, j = 450; // Face 4 img 25
-//  for (int k = 0; k < cloud->height - window_height; k += step_size) {
-//    for (int j = 0; j < cloud->width - window_width; j += step_size) {
-//      //int x_from = j, x_to = j + window_width, y_from = k, y_to = k + window_height;
-//      //cout << "Extracting window (" << x_from << " - " << x_to << ") x ("<< y_from << " - " << y_to << ")" << endl;
-//
-//      PointCloudT::Ptr window (new PointCloudT);
-//
-//      // TODO Manyually copy the window's points, setting is_dense to false in
-//      // the window cloud (or finding a way to remove the NaN while keeping the
-//      // point cloud organized).
-//      // Doin this would probably allow
-//      // for a great speedup, as each new window can be built by removing a
-//      // row/column and adding another one.
-//      // Q: Will all this matter since most of the work is done via an integral
-//      // image?
-//      pcl::ExtractIndices<PointT> ei (false);
-//      ei.setInputCloud(cloud);
-//      ei.setIndices(k, j, window_height, window_width);
-//      ei.setKeepOrganized(true);
-//      ei.filter(*window);
-//
-//      pcl::visualization::PCLVisualizer viewer("PCL Viewer");
-//      viewer.setCameraPosition(0,0,-2,0,-1,0,0);
-//
-//      pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(window);
-//      pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_c(cloud);
-//
-//      int left_vp, right_vp;
-//      viewer.createViewPort(0.0, 0.0, 0.5, 1.0, left_vp);
-//      viewer.createViewPort(0.5, 0.0, 1.0, 1.0, right_vp);
-//
-//      viewer.addPointCloud<PointT> (cloud, rgb_c, "cloud", left_vp);
-//      viewer.addPointCloud<PointT> (window, rgb, "window", right_vp);
-//      viewer.spin();
-//    }
-//  }
-//
-//  return 0;
-//}

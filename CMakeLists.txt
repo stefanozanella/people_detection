@@ -17,7 +17,7 @@ add_executable(people_detector apps/people_detector.cpp
   src/training_sample.cpp src/rect.cpp
   src/feature.cpp src/feature_value.cpp src/weak_classifier.cpp
   src/strong_classifier.cpp src/storage.cpp src/sub_window.cpp
-  src/integral_image.cpp)
+  src/integral_image.cpp src/single_seed_region_growing.cpp)
 add_executable(train apps/train.cpp src/training_sample.cpp src/rect.cpp
   src/feature.cpp src/feature_value.cpp src/weak_classifier.cpp
   src/strong_classifier.cpp src/storage.cpp src/integral_image.cpp)
