@@ -47,15 +47,25 @@
  *         [-] tune euclidean clustering parameters
  *         [x] explore other segmentation approaches -> region growing seems to work quite well if tuned correctly
  *           [x] test region growing with other samples, see how it fares -> seems to work quite well, maybe some params can be tuned down a bit
- *        [ ] implement a variant of region growing that only develops a region
+ *        [~] implement a variant of region growing that only develops a region
  *        starting from a seed. Start from the PCL implementation of region
  *        growing, use the centroid of the detection and see if we manage to
- *        cover the whole body.
- *        [ ] once the face region has been segmented, try to use octree radiusSearch to
+ *        cover the whole body. -> found RegionGrowing::getSegmentFromPoint(),
+ *        but it still does a full scan to perform the segmentation, then doing
+ *        another full scan to find the segment to which the point belongs to.
+ *          [ ] improve region growing algorithm so that starting from the seed
+ *          only one region is grown out of the seed
+ *          [ ] improve scaffolding code to avoid extracting the region of the
+ *          face and then performing another region growing over it. The problem
+ *          here was that picking the center of the window in the sub-sampled
+ *          cloud almost never picks up a point from the face. Not sure how to
+ *          solve it but I have the feeling that the OcTree::boxSearch is
+ *          returning something weird.
+ *        [-] once the face region has been segmented, try to use octree radiusSearch to
  *        iteratively expand the region of interest. Probably there's a need
  *        of finding some sort of algorithm that decides when to stop,
  *        to make the whole tolerant to figures next to a background object
- *        [ ] another approach could be to iteratively search for body portions:
+ *        [-] another approach could be to iteratively search for body portions:
  *        first, given the head we can look for the torso in a pre-defined box
  *        area around the face; next, we can try to look for arms and legs in
  *        predefined areas around the torso (i.e. given a torso, an arm can
@@ -107,7 +117,8 @@ typedef pcl::SingleSeedRegionGrowing<PointT, pcl::Normal> SingleSeedRegionGrowin
 
 typedef struct Face {
   PointXYZ min_boundary, max_boundary;
-  Face(PointXYZ min, PointXYZ max) : min_boundary (min), max_boundary (max) {}
+  PointT center;
+  Face(PointXYZ min, PointXYZ max, PointT center) : min_boundary (min), max_boundary (max), center (center) {}
 } Face;
 
 void bounded_min_max(PointCloudT::Ptr sample, int from_x, int from_y, int to_x, int to_y, PointXYZ& min, PointXYZ& max) {
@@ -242,7 +253,16 @@ void find_faces(const PointCloudT::Ptr sample, const StrongClassifier& detector,
     PointXYZ face_min_boundary, face_max_boundary;
     bounded_min_max(sample, cluster_from_x, cluster_from_y, cluster_to_x, cluster_to_y, face_min_boundary, face_max_boundary);
 
-    faces.push_back(Face(face_min_boundary, face_max_boundary));
+    faces.push_back(
+      Face(
+        face_min_boundary,
+        face_max_boundary,
+        sample->at(
+          (cluster_from_x + cluster_to_x) / 2,
+          (cluster_from_y + cluster_to_y) / 2
+        )
+      )
+    );
   }
 }
 
@@ -330,6 +350,10 @@ void find_bodies(PointCloudT::Ptr& cloud, vector<Face>& faces) {
 
   int j = 0;
   for (vector<Face>::iterator face = faces.begin(); face != faces.end(); face++) {
+    // TODO
+    // - compute face centroid
+    // - do a k nearest search for k = 1
+    // - use selected point as seed for single seed region growing
     vector<int> indices;
     octree.boxSearch(
       Eigen::Vector3f(face->min_boundary.x, face->min_boundary.y, face->min_boundary.z),
@@ -364,8 +388,20 @@ void find_bodies(PointCloudT::Ptr& cloud, vector<Face>& faces) {
         biggest_cluster = &(it->indices);
     }
 
+    pcl::PointIndices body_indices;
+    SingleSeedRegionGrowing r;
+    r.setMinClusterSize(200);
+    r.setMaxClusterSize(1000000);
+    r.setNumberOfNeighbours(60);
+    r.setSmoothnessThreshold(15.0 / 180.0 * M_PI);
+    r.setCurvatureThreshold(1.0);
+    r.setSearchMethod(tree);
+    r.setInputCloud(cloud);
+    r.setInputNormals(normals);
+    r.getSegmentFromPoint(biggest_cluster->at(biggest_cluster->size() / 2), body_indices);
+
     PointCloudT::Ptr cluster_cloud (new PointCloudT);
-    for (vector<int>::const_iterator pit = biggest_cluster->begin (); pit != biggest_cluster->end (); ++pit) {
+    for (vector<int>::const_iterator pit = body_indices.indices.begin(); pit != body_indices.indices.end(); ++pit) {
       PointT p = cloud->at(*pit);
       p.b = 255;
       p.r = p.g = 0;
