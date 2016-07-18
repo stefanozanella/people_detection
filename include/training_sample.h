@@ -15,6 +15,7 @@ class TrainingSample : public Sample {
 
   public:
 
+  // TODO Camel case?
   bool isPositive;
   float weight;
   uint32_t size;

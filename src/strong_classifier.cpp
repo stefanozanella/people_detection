@@ -22,7 +22,7 @@ float StrongClassifier::classification_value(const Sample& sample) const {
 }
 
 bool StrongClassifier::is_face(const Sample& sample) const {
-  return classification_value(sample) >= threshold;
+  return classification_value(sample) <= threshold;
 }
 
 void StrongClassifier::force_detection(const Sample& sample) {

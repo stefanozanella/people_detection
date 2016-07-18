@@ -141,17 +141,18 @@ void bounded_min_max(PointCloudT::Ptr sample, int from_x, int from_y, int to_x, 
 void find_faces(const PointCloudT::Ptr sample, const StrongClassifier& detector, vector<Face>& faces) {
   SubWindow sub_window (sample);
 
-  int x = 200, y = 200, current_win_size;
+  //int x = 200, y = 200, current_win_size;
+  int x = 0, y = 0, current_win_size;
   const int base_win_size = 148; // TODO
 
   int pos = 0, neg = 0;
   vector<vector<Rect>*> detection_buckets;
   vector<Rect>* detection_map [sample->width][sample->height];
 
-  //while (y < sample->height) {
-  //  while (x < sample->width) {
-  while (y < 260) {
-    while (x < 260) {
+  while (y < sample->height) {
+    while (x < sample->width) {
+  //while (y < 260) {
+  //  while (x < 260) {
       float center = sample->at(x, y).z;
 
       if (pcl_isnan(center)) {
@@ -210,17 +211,17 @@ void find_faces(const PointCloudT::Ptr sample, const StrongClassifier& detector,
 
           current_bucket->push_back(Rect(x_from, y_from, x_to - x_from, y_to - y_from, 1));
 
-          //for (int j = x_from; j <= x_to; j++) {
-          //  for (int k = y_from; k <= y_to; k++) {
-          //    detection_map[j][k] = current_bucket;
-          //  }
-          //}
-
-          for (int j = x-7; j <= x+7; j++) {
-            for (int k = y-7; k <= y+7; k++) {
+          for (int j = x_from; j <= x_to; j++) {
+            for (int k = y_from; k <= y_to; k++) {
               detection_map[j][k] = current_bucket;
             }
           }
+
+          //for (int j = x-7; j <= x+7; j++) {
+          //  for (int k = y-7; k <= y+7; k++) {
+          //    detection_map[j][k] = current_bucket;
+          //  }
+          //}
 
           pos++;
         } else {
@@ -232,8 +233,11 @@ void find_faces(const PointCloudT::Ptr sample, const StrongClassifier& detector,
     }
 
     y+=1; // TODO Maybe it's possible to move forward faster?
-    x = 200;
+    //x = 200;
+    x = 0;
   }
+
+  cout << "Pos: " << pos << ", Neg: " << neg << endl;
 
   for (vector<vector<Rect>*>::iterator bucket = detection_buckets.begin(); bucket != detection_buckets.end(); bucket++) {
     int cluster_from_y = 0, cluster_from_x = 0, cluster_to_x = 0, cluster_to_y = 0;
@@ -449,9 +453,9 @@ int main(int argc, char** argv) {
     voxel.setLeafSize(0.01, 0.01, 0.01);
     voxel.filter(*filtered_cloud);
 
-    //show_faces(filtered_cloud, faces);
+    show_faces(filtered_cloud, faces);
 
-    find_bodies(filtered_cloud, faces);
+    //find_bodies(filtered_cloud, faces);
   }
 
   return 0;

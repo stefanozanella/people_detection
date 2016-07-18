@@ -29,6 +29,8 @@
  * determined by how many faces you can pick out)
  * [ ] randomly pick out N from the non-face subwindows
  * [ ] train first classifier
+ *   [ ] fix polarity calculation in StrongClassifierTraining
+ *   [ ] fix forced detection algorithm
  */
 #include <string>
 #include <iostream>
@@ -47,6 +49,7 @@
 #include "storage.h"
 #include "load_trained_detector.h"
 #include "strong_classifier_training.h"
+#include "detection_performance.h"
 
 using std::string;
 using std::cout;
@@ -190,6 +193,18 @@ int main(int argc, char** argv) {
   StrongClassifierTraining training (samples, features, strong);
 
   training.trainWeakClassifier();
+
+  DetectionPerformance performance (samples, strong);
+  DetectionStats stats = performance.analyze();
+
+  cout << "Current detection stats" << endl;
+  cout << "\tTotal positive samples: " << stats.total_positive << endl;
+  cout << "\tTotal negative samples: " << stats.total_negative << endl;
+  cout << "\tDetected false negatives: " << stats.false_negatives << endl;
+  cout << "\tDetected false positives: " << stats.false_positives << endl;
+  cout << "\tDetection rate: " << stats.detection_rate << endl;
+  cout << "\tFalse positive rate: " << stats.false_positive_rate << endl;
+
   // perform detection with current strong classifier on set composed of:
   // - all positive samples
   // - false positives from previous stage
@@ -202,35 +217,46 @@ int main(int argc, char** argv) {
   // in case stats go awry?
   // - start training of new stage
 
-  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive && !strong.is_face(*sample)) {
-      cout << "Ouch! False negative" << endl;
-    }
+  // TODO This thing needs a lot of refinement
+  //for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+  //  if (sample->isPositive && !strong.is_face(*sample)) {
+  //    strong.force_detection(*sample);
 
-    if (!sample->isPositive && strong.is_face(*sample)) {
-      cout << "Meh! False positive" << endl;
-    }
-  }
+  //    stats = performance.analyze();
 
-  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive && !strong.is_face(*sample)) {
-      strong.force_detection(*sample);
-    }
-  }
+  //    cout << "Current detection stats" << endl;
+  //    cout << "\tTotal positive samples: " << stats.total_positive << endl;
+  //    cout << "\tTotal negative samples: " << stats.total_negative << endl;
+  //    cout << "\tDetected false negatives: " << stats.false_negatives << endl;
+  //    cout << "\tDetected false positives: " << stats.false_positives << endl;
+  //    cout << "\tDetection rate: " << stats.detection_rate << endl;
+  //    cout << "\tFalse positive rate: " << stats.false_positive_rate << endl;
+  //  }
+  //}
+
+  //stats = performance.analyze();
+
+  //cout << "Current detection stats" << endl;
+  //cout << "\tTotal positive samples: " << stats.total_positive << endl;
+  //cout << "\tTotal negative samples: " << stats.total_negative << endl;
+  //cout << "\tDetected false negatives: " << stats.false_negatives << endl;
+  //cout << "\tDetected false positives: " << stats.false_positives << endl;
+  //cout << "\tDetection rate: " << stats.detection_rate << endl;
+  //cout << "\tFalse positive rate: " << stats.false_positive_rate << endl;
 
   save_training_results(strong, "face_detector.yml");
 
-  cout << "~~~~~~~~~~~" << endl;
+  //cout << "~~~~~~~~~~~" << endl;
 
-  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive && !strong.is_face(*sample)) {
-      cout << "Ouch! False negative" << endl;
-    }
+  //for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+  //  if (sample->isPositive && !strong.is_face(*sample)) {
+  //    cout << "Ouch! False negative" << endl;
+  //  }
 
-    if (!sample->isPositive && strong.is_face(*sample)) {
-      cout << "Meh! False positive" << endl;
-    }
-  }
+  //  if (!sample->isPositive && strong.is_face(*sample)) {
+  //    cout << "Meh! False positive" << endl;
+  //  }
+  //}
 
   // DEFINITIONS:
   // false positive rate = sum(false positives) / sum(negative samples)
