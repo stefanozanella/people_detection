@@ -27,9 +27,13 @@
  *   [x] add more negative samples
  * [ ] decide on a base size for the training set, split 50:50 (probably
  * determined by how many faces you can pick out)
- * [ ] randomly pick out N from the non-face subwindows
+ * [ ] scan image without faces -> use algo from people_detector
+ * [ ] find base size, pick max together with positive samples as a base size
+ *     for feature generation
+ * [ ] pick randomly from negative samples pool, fill up to match number of
+ *     faces
  * [ ] train first classifier
- *   [ ] fix polarity calculation in StrongClassifierTraining
+ *   [x] fix polarity calculation in StrongClassifierTraining
  *   [ ] fix forced detection algorithm
  */
 #include <string>
@@ -155,6 +159,72 @@ int load_samples(vector<TrainingSample>& samples, const string& positive_samples
   return 0;
 }
 
+int load_positive_samples(vector<PointCloudT::Ptr>& samples, const string& source) {
+  directory_iterator positive_sample ((path(source)));
+  directory_iterator no_more_samples;
+
+  for (; positive_sample != no_more_samples; positive_sample++) {
+    PointCloudT::Ptr sample_cloud (new PointCloudT);
+
+    if (loadPCDFile<PointT>(positive_sample->path().string(), *(sample_cloud)) == -1) {
+      return -1;
+    }
+
+    samples.push_back(sample_cloud);
+  }
+
+  return 0;
+}
+
+int scan_samples_from_point_cloud(vector<PointCloudT::Ptr>& samples, const string& source, const int step) {
+  PointCloudT::Ptr cloud (new PointCloudT);
+
+  if (loadPCDFile<PointT>(source, *cloud) == -1) {
+    return -1;
+  }
+
+  int x = 0, y = 0, current_win_size;
+  const int base_win_size = 148; // TODO
+
+  int pos = 0, neg = 0;
+
+  while (y < cloud->height) {
+    while (x < cloud->width) {
+      float center = cloud->at(x, y).z;
+
+      if (pcl_isnan(center)) {
+        x++;
+        continue;
+      }
+
+      current_win_size = ceil(base_win_size / cloud->at(x, y).z);
+
+      int x_from = x - floor(current_win_size / 2.0);
+      int x_to = x + ceil(current_win_size / 2.0);
+      int y_from = y - floor(current_win_size / 2.0);
+      int y_to = y + ceil(current_win_size / 2.0);
+
+      if (x_from >= 0 && x_to < cloud->width && y_from >= 0 && y_to < cloud->height) {
+        vector<int> indices;
+        for (int j = y_from; j < y_to; j++) {
+          for (int k = x_from; k < x_to; k++) {
+            indices.push_back(j*cloud->width + k);
+          }
+        }
+        PointCloudT::Ptr sample (new PointCloudT);
+        copyPointCloud(*cloud, indices, *sample);
+        sample->width = sample->height = current_win_size;
+        samples.push_back(sample);
+      }
+      x+=step;
+    }
+    y+=step;
+    x = 0;
+  }
+
+  return 0;
+}
+
 /**
  * Invariants:
  * * samples are square in size (width == height)
@@ -176,6 +246,30 @@ void save_training_results(StrongClassifier& classifier, const string& file) {
 }
 
 int main(int argc, char** argv) {
+  vector<PointCloudT::Ptr> positive_samples, negative_sample_pool;
+
+  cout << "Loading positive samples...";
+  if (load_positive_samples(positive_samples, string(argv[1])) < 0) {
+    cout << "Couldn't load positive samples from " << string(argv[1]) << endl;
+    return -1;
+  }
+  cout << positive_samples.size() << " loaded." << endl;
+
+  cout << "Scanning for negative samples...";
+  if (scan_samples_from_point_cloud(negative_sample_pool, string(argv[3]), 10) < 0) {
+    cout << "Couldn't load negative samples from " << string(argv[3]) << endl;
+    return -1;
+  }
+  cout << negative_sample_pool.size() << " found." << endl;
+
+  vector<TrainingSample> training_samples;
+
+  int step = max((int)(negative_sample_pool.size() / positive_samples.size()), 1);
+  for (int k = 0; k < positive_samples.size(); k++) {
+    training_samples.push_back(TrainingSample(positive_samples.at(k), true));
+    training_samples.push_back(TrainingSample(negative_sample_pool.at(k*step % negative_sample_pool.size()), false));
+  }
+
   vector<TrainingSample> samples;
   vector<Feature> features;
 

@@ -8,7 +8,7 @@ run: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_run app=people_detector in=/vagrant/$(in)"
 
 train: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_run app=train in=/vagrant/$(in) out=/vagrant/$(out)"
+	vagrant ssh -c "cd /vagrant && make local_run app=train in=/vagrant/$(in) out=/vagrant/$(out) negative=/vagrant/$(negative)"
 
 extract_samples: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_run app=extract_samples in=/vagrant/$(in) out=/vagrant/$(out)"
@@ -29,7 +29,7 @@ local_build: build bin
 	@cd build && cmake .. && make 
 
 local_run: local_build
-	@LC_ALL="C.UTF-8" time bin/$(app) $(in) $(out)
+	@LC_ALL="C.UTF-8" time bin/$(app) $(in) $(out) $(negative)
 
 build:
 	mkdir build
