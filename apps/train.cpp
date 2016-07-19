@@ -27,14 +27,17 @@
  *   [x] add more negative samples
  * [ ] decide on a base size for the training set, split 50:50 (probably
  * determined by how many faces you can pick out)
- * [ ] scan image without faces -> use algo from people_detector
+ * [x] scan image without faces -> use algo from people_detector
  * [ ] find base size, pick max together with positive samples as a base size
  *     for feature generation
- * [ ] pick randomly from negative samples pool, fill up to match number of
- *     faces
+ * [x] pick randomly from negative samples pool, fill up to match number of
+ *     faces -> not really random, but doesn't change results much apparently
  * [ ] train first classifier
  *   [x] fix polarity calculation in StrongClassifierTraining
  *   [ ] fix forced detection algorithm
+ * [ ] prepare data for second round
+ *   [ ] reset positive samples so that weight are reinitialized
+ *   [ ] pick randomly from validation samples that fail classification
  */
 #include <string>
 #include <iostream>
@@ -129,36 +132,6 @@ void generate_features(vector<Feature>& features, int window_size) {
   }
 }
 
-int load_samples(vector<TrainingSample>& samples, const string& positive_samples_dir, const string& negative_samples_dir) {
-  directory_iterator positive_sample ((path(positive_samples_dir)));
-  directory_iterator negative_sample ((path(negative_samples_dir)));
-  directory_iterator no_more_samples;
-
-  for (; positive_sample != no_more_samples; positive_sample++) {
-    PointCloudT::Ptr sample_cloud (new PointCloudT);
-
-    if (loadPCDFile<PointT>(positive_sample->path().string(), *(sample_cloud)) == -1) {
-      cout << "Couldn't load cloud file " << positive_sample->path() << endl;
-      return -1;
-    }
-
-    samples.push_back(TrainingSample(sample_cloud, true));
-  }
-
-  for (; negative_sample != no_more_samples; negative_sample++) {
-    PointCloudT::Ptr sample_cloud (new PointCloudT);
-
-    if (loadPCDFile<PointT>(negative_sample->path().string(), *(sample_cloud)) == -1) {
-      cout << "Couldn't load cloud file " << negative_sample->path() << endl;
-      return -1;
-    }
-
-    samples.push_back(TrainingSample(sample_cloud, false));
-  }
-
-  return 0;
-}
-
 int load_positive_samples(vector<PointCloudT::Ptr>& samples, const string& source) {
   directory_iterator positive_sample ((path(source)));
   directory_iterator no_more_samples;
@@ -245,7 +218,22 @@ void save_training_results(StrongClassifier& classifier, const string& file) {
   storage.persist(file);
 }
 
+void show_performance_stats(vector<TrainingSample>& samples, StrongClassifier& classifier) {
+  DetectionPerformance performance (samples, classifier);
+  DetectionStats stats = performance.analyze();
+
+  cout << "Current detection stats" << endl;
+  cout << "\tTotal positive samples: " << stats.total_positive << endl;
+  cout << "\tTotal negative samples: " << stats.total_negative << endl;
+  cout << "\tDetected false negatives: " << stats.false_negatives << endl;
+  cout << "\tDetected false positives: " << stats.false_positives << endl;
+  cout << "\tDetection rate: " << stats.detection_rate << endl;
+  cout << "\tFalse positive rate: " << stats.false_positive_rate << endl;
+}
+
 int main(int argc, char** argv) {
+  vector<Feature> features;
+
   vector<PointCloudT::Ptr> positive_samples, negative_sample_pool;
 
   cout << "Loading positive samples...";
@@ -256,48 +244,38 @@ int main(int argc, char** argv) {
   cout << positive_samples.size() << " loaded." << endl;
 
   cout << "Scanning for negative samples...";
-  if (scan_samples_from_point_cloud(negative_sample_pool, string(argv[3]), 10) < 0) {
-    cout << "Couldn't load negative samples from " << string(argv[3]) << endl;
+  if (scan_samples_from_point_cloud(negative_sample_pool, string(argv[2]), 10) < 0) {
+    cout << "Couldn't load negative samples from " << string(argv[2]) << endl;
     return -1;
   }
   cout << negative_sample_pool.size() << " found." << endl;
 
-  vector<TrainingSample> training_samples;
+  vector<TrainingSample> samples;
 
   int step = max((int)(negative_sample_pool.size() / positive_samples.size()), 1);
   for (int k = 0; k < positive_samples.size(); k++) {
-    training_samples.push_back(TrainingSample(positive_samples.at(k), true));
-    training_samples.push_back(TrainingSample(negative_sample_pool.at(k*step % negative_sample_pool.size()), false));
+    samples.push_back(TrainingSample(positive_samples.at(k), true));
+    samples.push_back(TrainingSample(negative_sample_pool.at(k*step % negative_sample_pool.size()), false));
   }
 
-  vector<TrainingSample> samples;
-  vector<Feature> features;
-
-  if (load_samples(samples, string(argv[1]), string(argv[2])) < 0) {
-    // TODO More informative error
-    return -1;
-  }
-
+  // TODO Move somewhere else, use point clouds rather than training samples so
+  // we can do this at the very beginning
+  cout << "Generating features...";
   generate_features(features, find_biggest_window(samples));
-  cout << "Generated " << features.size() << " features" << endl;
+  cout << features.size() << " features generated." << endl;
 
   StrongClassifier strong;
 
   // TODO the trainer should wrap the samples so that it "owns" the weights.
   StrongClassifierTraining training (samples, features, strong);
-
   training.trainWeakClassifier();
 
-  DetectionPerformance performance (samples, strong);
-  DetectionStats stats = performance.analyze();
-
-  cout << "Current detection stats" << endl;
-  cout << "\tTotal positive samples: " << stats.total_positive << endl;
-  cout << "\tTotal negative samples: " << stats.total_negative << endl;
-  cout << "\tDetected false negatives: " << stats.false_negatives << endl;
-  cout << "\tDetected false positives: " << stats.false_positives << endl;
-  cout << "\tDetection rate: " << stats.detection_rate << endl;
-  cout << "\tFalse positive rate: " << stats.false_positive_rate << endl;
+  show_performance_stats(samples, strong);
+  vector<TrainingSample> validation_set;
+  for (int k = 0; k < negative_sample_pool.size(); k++) {
+    validation_set.push_back(TrainingSample(negative_sample_pool.at(k), false));
+  }
+  show_performance_stats(validation_set, strong);
 
   // perform detection with current strong classifier on set composed of:
   // - all positive samples
