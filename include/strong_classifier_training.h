@@ -14,6 +14,7 @@ class StrongClassifierTraining {
   const vector<Feature>& features;
   StrongClassifier& strong;
 
+  void initialize_weights(vector<TrainingSample>& samples);
   void normalize_weights(vector<TrainingSample>& samples);
   WeakClassifier optimal_classifier(vector<TrainingSample>& samples, const vector<Feature>& features);
   WeakClassifier optimal_classifier_for_feature(const Feature& feature, vector<TrainingSample>& samples);

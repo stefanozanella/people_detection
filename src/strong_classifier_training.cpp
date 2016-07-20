@@ -13,7 +13,9 @@ StrongClassifierTraining::StrongClassifierTraining(vector<TrainingSample>& sampl
   samples (samples),
   features (features),
   strong (strong)
-{}
+{
+  initialize_weights(samples);
+}
 
 void StrongClassifierTraining::trainWeakClassifier() {
   normalize_weights(samples);
@@ -23,7 +25,7 @@ void StrongClassifierTraining::trainWeakClassifier() {
   strong << weak;
 }
 
-void StrongClassifierTraining::normalize_weights(vector<TrainingSample>& samples) {
+void StrongClassifierTraining::initialize_weights(vector<TrainingSample>& samples) {
   float positive_cumulative_weight = 0, negative_cumulative_weight = 0;
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
@@ -35,6 +37,18 @@ void StrongClassifierTraining::normalize_weights(vector<TrainingSample>& samples
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
     sample->weight /= sample->isPositive ? positive_cumulative_weight : negative_cumulative_weight;
+  }
+}
+
+void StrongClassifierTraining::normalize_weights(vector<TrainingSample>& samples) {
+  float total_weight = 0;
+
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    total_weight += sample->weight;
+  }
+
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    sample->weight /= total_weight;
   }
 }
 
