@@ -34,6 +34,8 @@
  *     faces -> not really random, but doesn't change results much apparently
  * [ ] train first classifier
  *   [x] fix polarity calculation in StrongClassifierTraining
+ *   [ ] fix feature generation, base it on the minimum example's size (you
+ *   shouldn't have any feature value = 0)
  *   [ ] fix forced detection algorithm
  * [ ] prepare data for second round
  *   [ ] reset positive samples so that weight are reinitialized
