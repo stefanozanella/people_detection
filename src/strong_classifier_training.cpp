@@ -55,7 +55,7 @@ void StrongClassifierTraining::normalize_weights(vector<TrainingSample>& samples
 WeakClassifier StrongClassifierTraining::optimal_classifier(vector<TrainingSample>& samples, const vector<Feature>& features) {
   WeakClassifier optimal_classifier;
 
-  for (int k = 0; k < features.size(); k += 10000) {
+  for (int k = 0; k < features.size(); k += 1) {
     optimal_classifier = min(
       optimal_classifier,
       optimal_classifier_for_feature(features.at(k), samples)

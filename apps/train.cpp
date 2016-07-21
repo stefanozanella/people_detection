@@ -68,6 +68,7 @@ using boost::filesystem::path;
 using boost::filesystem::directory_iterator;
 using pcl::io::loadPCDFile;
 using std::max;
+using std::min;
 
 void generate_features(vector<Feature>& features, int window_size) {
   for (uint32_t x = 0; x < window_size; x++) {
@@ -205,13 +206,13 @@ int scan_samples_from_point_cloud(vector<PointCloudT::Ptr>& samples, const strin
  * * samples are square in size (width == height)
  * * samples are organized clouds
  */
-uint32_t find_biggest_window(const vector<TrainingSample>& samples) {
-  uint32_t biggest_window_size = 0;
+uint32_t find_smallest_window(const vector<TrainingSample>& samples) {
+  uint32_t smallest_window_size = INT_MAX;
   for (vector<TrainingSample>::const_iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    biggest_window_size = max(biggest_window_size, sample->size);
+    smallest_window_size = min(smallest_window_size, sample->size);
   }
 
-  return biggest_window_size;
+  return smallest_window_size;
 }
 
 void save_training_results(StrongClassifier& classifier, const string& file) {
@@ -263,7 +264,7 @@ int main(int argc, char** argv) {
   // TODO Move somewhere else, use point clouds rather than training samples so
   // we can do this at the very beginning
   cout << "Generating features...";
-  generate_features(features, find_biggest_window(samples));
+  generate_features(features, find_smallest_window(samples));
   cout << features.size() << " features generated." << endl;
 
   StrongClassifier strong;
