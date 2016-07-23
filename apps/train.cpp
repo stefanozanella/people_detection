@@ -34,7 +34,7 @@
  *     faces -> not really random, but doesn't change results much apparently
  * [ ] train first classifier
  *   [x] fix polarity calculation in StrongClassifierTraining
- *   [ ] fix feature generation, base it on the minimum example's size (you
+ *   [x] fix feature generation, base it on the minimum example's size (you
  *   shouldn't have any feature value = 0)
  *   [ ] fix forced detection algorithm
  * [ ] prepare data for second round
@@ -253,11 +253,15 @@ int main(int argc, char** argv) {
   }
   cout << negative_sample_pool.size() << " found." << endl;
 
-  vector<TrainingSample> samples;
+  vector<TrainingSample> positive_training_samples, samples;
+
+  for (int k = 0; k < positive_samples.size(); k++) {
+    positive_training_samples.push_back(TrainingSample(positive_samples.at(k), true));
+  }
 
   int step = max((int)(negative_sample_pool.size() / positive_samples.size()), 1);
   for (int k = 0; k < positive_samples.size(); k++) {
-    samples.push_back(TrainingSample(positive_samples.at(k), true));
+    samples.push_back(positive_training_samples.at(k));
     samples.push_back(TrainingSample(negative_sample_pool.at(k*step % negative_sample_pool.size()), false));
   }
 
