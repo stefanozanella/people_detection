@@ -1,6 +1,6 @@
 #include "detection_performance.h"
 
-DetectionPerformance::DetectionPerformance(vector<TrainingSample>& samples, StrongClassifier& classifier) :
+DetectionPerformance::DetectionPerformance(vector<TrainingSample>& samples, CascadeClassifier& classifier) :
   samples (samples),
   classifier (classifier)
 {}

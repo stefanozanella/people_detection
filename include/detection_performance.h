@@ -4,18 +4,18 @@
 #include <vector>
 
 #include "training_sample.h"
-#include "strong_classifier.h"
+#include "cascade_classifier.h"
 #include "detection_stats.h"
 
 using std::vector;
 
 class DetectionPerformance {
   vector<TrainingSample>& samples;
-  StrongClassifier& classifier;
+  CascadeClassifier& classifier;
 
   public:
 
-  DetectionPerformance(vector<TrainingSample>& samples, StrongClassifier& classifier);
+  DetectionPerformance(vector<TrainingSample>& samples, CascadeClassifier& classifier);
   DetectionStats analyze();
 };
 

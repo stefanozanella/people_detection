@@ -36,10 +36,18 @@
  *   [x] fix polarity calculation in StrongClassifierTraining
  *   [x] fix feature generation, base it on the minimum example's size (you
  *   shouldn't have any feature value = 0)
- *   [ ] fix forced detection algorithm
  * [ ] prepare data for second round
- *   [ ] reset positive samples so that weight are reinitialized
- *   [ ] pick randomly from validation samples that fail classification
+ *   [x] reset positive samples so that weight are reinitialized
+ *   [x] pick randomly from validation samples that fail classification -> not
+ *   really random, but seems to work
+ * [ ] consolidate approach into a cascade classifier
+ *   [x] build cascade classifier
+ *   [ ] store cascade classifier
+ *   [ ] get numbers out of the cascade classifier
+ *   [ ] add threshold adjustment to weak classifier
+ * [ ] refactor
+ *   [ ] extract interface type "classifier" with method "classify", should
+ *   apply to weak, strong and cascade.
  */
 #include <string>
 #include <iostream>
@@ -59,6 +67,7 @@
 #include "load_trained_detector.h"
 #include "strong_classifier_training.h"
 #include "detection_performance.h"
+#include "cascade_classifier.h"
 
 using std::string;
 using std::cout;
@@ -215,13 +224,13 @@ uint32_t find_smallest_window(const vector<TrainingSample>& samples) {
   return smallest_window_size;
 }
 
-void save_training_results(StrongClassifier& classifier, const string& file) {
+void save_training_results(CascadeClassifier& classifier, const string& file) {
   Storage storage;
   classifier.save(storage);
   storage.persist(file);
 }
 
-void show_performance_stats(vector<TrainingSample>& samples, StrongClassifier& classifier) {
+void show_performance_stats(vector<TrainingSample>& samples, CascadeClassifier& classifier) {
   DetectionPerformance performance (samples, classifier);
   DetectionStats stats = performance.analyze();
 
@@ -253,16 +262,20 @@ int main(int argc, char** argv) {
   }
   cout << negative_sample_pool.size() << " found." << endl;
 
-  vector<TrainingSample> positive_training_samples, samples;
+  vector<TrainingSample> positive_training_samples, negative_training_sample_pool, samples;
 
   for (int k = 0; k < positive_samples.size(); k++) {
     positive_training_samples.push_back(TrainingSample(positive_samples.at(k), true));
   }
 
+  for (int k = 0; k < negative_sample_pool.size(); k++) {
+    negative_training_sample_pool.push_back(TrainingSample(negative_sample_pool.at(k), false));
+  }
+
   int step = max((int)(negative_sample_pool.size() / positive_samples.size()), 1);
   for (int k = 0; k < positive_samples.size(); k++) {
     samples.push_back(positive_training_samples.at(k));
-    samples.push_back(TrainingSample(negative_sample_pool.at(k*step % negative_sample_pool.size()), false));
+    samples.push_back(negative_training_sample_pool.at(k*step % negative_sample_pool.size()));
   }
 
   // TODO Move somewhere else, use point clouds rather than training samples so
@@ -271,18 +284,54 @@ int main(int argc, char** argv) {
   generate_features(features, find_smallest_window(samples));
   cout << features.size() << " features generated." << endl;
 
+  CascadeClassifier cascade;
+
   StrongClassifier strong;
 
   // TODO the trainer should wrap the samples so that it "owns" the weights.
   StrongClassifierTraining training (samples, features, strong);
   training.trainWeakClassifier();
 
-  show_performance_stats(samples, strong);
-  vector<TrainingSample> validation_set;
-  for (int k = 0; k < negative_sample_pool.size(); k++) {
-    validation_set.push_back(TrainingSample(negative_sample_pool.at(k), false));
+  cascade << strong;
+
+  show_performance_stats(samples, cascade);
+
+  samples.clear();
+  for (int k = 0; k < positive_training_samples.size(); k++) {
+    samples.push_back(positive_training_samples.at(k));
   }
-  show_performance_stats(validation_set, strong);
+
+  int j = 0, k = 0;
+  while (k < positive_training_samples.size()) {
+    if (j >= negative_training_sample_pool.size()) {
+      break;
+    }
+
+    if (strong.is_face(negative_training_sample_pool.at(j))) {
+      samples.push_back(negative_training_sample_pool.at(j));
+      k++;
+    }
+    j++;
+  }
+
+  StrongClassifier strong2;
+
+  // TODO the trainer should wrap the samples so that it "owns" the weights.
+  StrongClassifierTraining training2 (samples, features, strong2);
+  training2.trainWeakClassifier();
+  training2.trainWeakClassifier();
+  training2.trainWeakClassifier();
+  training2.trainWeakClassifier();
+  training2.trainWeakClassifier();
+  training2.trainWeakClassifier();
+  training2.trainWeakClassifier();
+  training2.trainWeakClassifier();
+  training2.trainWeakClassifier();
+  training2.trainWeakClassifier();
+
+  cascade << strong2;
+
+  show_performance_stats(samples, cascade);
 
   // perform detection with current strong classifier on set composed of:
   // - all positive samples
@@ -323,7 +372,7 @@ int main(int argc, char** argv) {
   //cout << "\tDetection rate: " << stats.detection_rate << endl;
   //cout << "\tFalse positive rate: " << stats.false_positive_rate << endl;
 
-  save_training_results(strong, "face_detector.yml");
+  save_training_results(cascade, "face_detector.yml");
 
   //cout << "~~~~~~~~~~~" << endl;
 
