@@ -7,6 +7,7 @@
 
 #include "yaml-cpp/yaml.h"
 
+#include "cascade_classifier.h"
 #include "strong_classifier.h"
 #include "weak_classifier.h"
 #include "feature.h"
@@ -15,7 +16,7 @@
 using std::string;
 using boost::filesystem::is_regular_file;
 
-bool load_trained_detector(const string& filename, StrongClassifier& classifier) {
+bool load_trained_detector(const string& filename, CascadeClassifier& classifier) {
   if (!is_regular_file(filename)) {
     return false;
   }
@@ -23,32 +24,42 @@ bool load_trained_detector(const string& filename, StrongClassifier& classifier)
   YAML::Node params = YAML::LoadFile(filename);
 
   for (
-    YAML::const_iterator weak = params["weak_classifiers"].begin();
-    weak != params["weak_classifiers"].end();
-    weak++
+    YAML::const_iterator stage = params["stages"].begin();
+    stage != params["stages"].end();
+    stage++
   ) {
-    Feature feature ((*weak)["feature"]["base_size"].as<int>());
+    StrongClassifier stage_classifier;
 
     for (
-      YAML::const_iterator rect = (*weak)["feature"]["rectangles"].begin();
-      rect != (*weak)["feature"]["rectangles"].end();
-      rect++
+      YAML::const_iterator weak = (*stage)["weak_classifiers"].begin();
+      weak != (*stage)["weak_classifiers"].end();
+      weak++
     ) {
-      feature << Rect(
-        (*rect)["x"].as<int>(),
-        (*rect)["y"].as<int>(),
-        (*rect)["width"].as<int>(),
-        (*rect)["height"].as<int>(),
-        (*rect)["multiplier"].as<int>()
+      Feature feature ((*weak)["feature"]["base_size"].as<int>());
+
+      for (
+        YAML::const_iterator rect = (*weak)["feature"]["rectangles"].begin();
+        rect != (*weak)["feature"]["rectangles"].end();
+        rect++
+      ) {
+        feature << Rect(
+          (*rect)["x"].as<int>(),
+          (*rect)["y"].as<int>(),
+          (*rect)["width"].as<int>(),
+          (*rect)["height"].as<int>(),
+          (*rect)["multiplier"].as<int>()
+        );
+      }
+
+      stage_classifier << WeakClassifier(
+        feature,
+        (*weak)["threshold"].as<float>(),
+        (*weak)["polarity"].as<int>(),
+        (*weak)["error"].as<float>()
       );
     }
 
-    classifier << WeakClassifier(
-      feature,
-      (*weak)["threshold"].as<float>(),
-      (*weak)["polarity"].as<int>(),
-      (*weak)["error"].as<float>()
-    );
+    classifier << stage_classifier;
   }
 
   return true;

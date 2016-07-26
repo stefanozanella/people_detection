@@ -42,7 +42,7 @@
  *   really random, but seems to work
  * [ ] consolidate approach into a cascade classifier
  *   [x] build cascade classifier
- *   [ ] store cascade classifier
+ *   [x] store cascade classifier
  *   [ ] get numbers out of the cascade classifier
  *   [ ] add threshold adjustment to weak classifier
  * [ ] refactor

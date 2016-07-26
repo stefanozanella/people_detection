@@ -90,7 +90,7 @@
 #include <pcl/features/normal_3d.h>
 #include "pcl/segmentation/single_seed_region_growing.h"
 
-#include "strong_classifier.h"
+#include "cascade_classifier.h"
 #include "load_trained_detector.h"
 #include "sub_window.h"
 
@@ -138,7 +138,7 @@ void bounded_min_max(PointCloudT::Ptr sample, int from_x, int from_y, int to_x, 
   }
 }
 
-void find_faces(const PointCloudT::Ptr sample, const StrongClassifier& detector, vector<Face>& faces) {
+void find_faces(const PointCloudT::Ptr sample, const CascadeClassifier& detector, vector<Face>& faces) {
   SubWindow sub_window (sample);
 
   //int x = 200, y = 200, current_win_size;
@@ -427,7 +427,8 @@ void find_bodies(PointCloudT::Ptr& cloud, vector<Face>& faces) {
 }
 
 int main(int argc, char** argv) {
-  StrongClassifier detector;
+  CascadeClassifier detector;
+
   if (!load_trained_detector("face_detector.yml", detector)) {
     cout << "Couldn't load classifier" << endl;
     return -1;
