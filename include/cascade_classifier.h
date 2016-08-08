@@ -13,7 +13,8 @@ class CascadeClassifier {
 
   public:
   CascadeClassifier();
-  CascadeClassifier& operator<<(const StrongClassifier& strong);
+  void push_back(const StrongClassifier& strong);
+  void pop_back();
   bool is_face(const Sample& sample) const;
   void save(Storage& storage) const;
 };

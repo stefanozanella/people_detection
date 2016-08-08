@@ -2,8 +2,12 @@
 
 CascadeClassifier::CascadeClassifier() {}
 
-CascadeClassifier& CascadeClassifier::operator<<(const StrongClassifier& strong) {
+void CascadeClassifier::push_back(const StrongClassifier& strong) {
   cascade.push_back(strong);
+}
+
+void CascadeClassifier::pop_back() {
+  cascade.pop_back();
 }
 
 bool CascadeClassifier::is_face(const Sample& sample) const {

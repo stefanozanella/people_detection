@@ -59,7 +59,7 @@ bool load_trained_detector(const string& filename, CascadeClassifier& classifier
       );
     }
 
-    classifier << stage_classifier;
+    classifier.push_back(stage_classifier);
   }
 
   return true;

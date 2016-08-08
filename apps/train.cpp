@@ -32,19 +32,25 @@
  *     for feature generation
  * [x] pick randomly from negative samples pool, fill up to match number of
  *     faces -> not really random, but doesn't change results much apparently
- * [ ] train first classifier
+ * [x] train first classifier
  *   [x] fix polarity calculation in StrongClassifierTraining
  *   [x] fix feature generation, base it on the minimum example's size (you
  *   shouldn't have any feature value = 0)
- * [ ] prepare data for second round
+ * [x] prepare data for second round
  *   [x] reset positive samples so that weight are reinitialized
  *   [x] pick randomly from validation samples that fail classification -> not
  *   really random, but seems to work
  * [ ] consolidate approach into a cascade classifier
  *   [x] build cascade classifier
  *   [x] store cascade classifier
- *   [ ] get numbers out of the cascade classifier
- *   [ ] add threshold adjustment to weak classifier
+ *   [x] get numbers out of the cascade classifier
+ *   [ ] add threshold adjustment to weak classifier (idea: wouldn't it be
+ *   possible to reverse the process? I.e. instead of training first and then
+ *   adjusting the threshold to fit the detection rate, wouldn't it be possible,
+ *   given a target detection rate for the classifier, to deduce the number of
+ *   failing samples to allow so that the training can already take that into
+ *   account - meaning, we don't minimize the error, but we try to reach the
+ *   target detection rate)
  * [ ] refactor
  *   [ ] extract interface type "classifier" with method "classify", should
  *   apply to weak, strong and cascade.
@@ -64,7 +70,6 @@
 #include "weak_classifier.h"
 #include "strong_classifier.h"
 #include "storage.h"
-#include "load_trained_detector.h"
 #include "strong_classifier_training.h"
 #include "detection_performance.h"
 #include "cascade_classifier.h"
@@ -230,10 +235,7 @@ void save_training_results(CascadeClassifier& classifier, const string& file) {
   storage.persist(file);
 }
 
-void show_performance_stats(vector<TrainingSample>& samples, CascadeClassifier& classifier) {
-  DetectionPerformance performance (samples, classifier);
-  DetectionStats stats = performance.analyze();
-
+void show_performance_stats(DetectionStats stats) {
   cout << "Current detection stats" << endl;
   cout << "\tTotal positive samples: " << stats.total_positive << endl;
   cout << "\tTotal negative samples: " << stats.total_negative << endl;
@@ -244,6 +246,11 @@ void show_performance_stats(vector<TrainingSample>& samples, CascadeClassifier& 
 }
 
 int main(int argc, char** argv) {
+  const float MINIMUM_DETECTION_RATE = 1.0;
+  const float MAXIMUM_FALSE_POSITIVE_RATE = 0.45;
+  const float TARGET_FALSE_POSITIVE_RATE = 0.01;
+  float current_false_positive_rate = 1.0, current_detection_rate = 1.0;
+
   vector<Feature> features;
 
   vector<PointCloudT::Ptr> positive_samples, negative_sample_pool;
@@ -262,14 +269,19 @@ int main(int argc, char** argv) {
   }
   cout << negative_sample_pool.size() << " found." << endl;
 
-  vector<TrainingSample> positive_training_samples, negative_training_sample_pool, samples;
+  vector<TrainingSample> positive_training_samples,
+    negative_training_sample_pool,
+    samples,
+    validation_set;
 
   for (int k = 0; k < positive_samples.size(); k++) {
     positive_training_samples.push_back(TrainingSample(positive_samples.at(k), true));
+    validation_set.push_back(TrainingSample(positive_samples.at(k), true));
   }
 
   for (int k = 0; k < negative_sample_pool.size(); k++) {
     negative_training_sample_pool.push_back(TrainingSample(negative_sample_pool.at(k), false));
+    validation_set.push_back(TrainingSample(negative_sample_pool.at(k), false));
   }
 
   int step = max((int)(negative_sample_pool.size() / positive_samples.size()), 1);
@@ -286,52 +298,70 @@ int main(int argc, char** argv) {
 
   CascadeClassifier cascade;
 
-  StrongClassifier strong;
+  while (current_false_positive_rate > TARGET_FALSE_POSITIVE_RATE) {
+    float last_false_positive_rate = current_false_positive_rate;
+    float last_detection_rate = current_detection_rate;
 
-  // TODO the trainer should wrap the samples so that it "owns" the weights.
-  StrongClassifierTraining training (samples, features, strong);
-  training.trainWeakClassifier();
+    StrongClassifier strong;
+    // TODO the trainer should wrap the samples so that it "owns" the weights.
+    StrongClassifierTraining training (samples, features, strong);
 
-  cascade << strong;
+    cascade.push_back(strong);
 
-  show_performance_stats(samples, cascade);
+    while (current_false_positive_rate > MAXIMUM_FALSE_POSITIVE_RATE * last_false_positive_rate) {
+      cascade.pop_back();
 
-  samples.clear();
-  for (int k = 0; k < positive_training_samples.size(); k++) {
-    samples.push_back(positive_training_samples.at(k));
-  }
+      training.trainWeakClassifier();
 
-  int j = 0, k = 0;
-  while (k < positive_training_samples.size()) {
-    if (j >= negative_training_sample_pool.size()) {
-      break;
+      cascade.push_back(strong);
+
+      //DetectionPerformance samples_performance (samples, cascade);
+      //DetectionStats samples_stats = samples_performance.analyze();
+      //show_performance_stats(samples_stats);
+
+      DetectionPerformance validation_performance (validation_set, cascade);
+      DetectionStats validation_stats = validation_performance.analyze();
+      //show_performance_stats(validation_stats);
+
+      current_false_positive_rate = validation_stats.false_positive_rate;
+      current_detection_rate = validation_stats.detection_rate;
+
+      if (current_detection_rate < MINIMUM_DETECTION_RATE * last_detection_rate) {
+        // TODO tune threshold to match detection rate requirements
+        cout << "HERE WE GO" << endl;
+        return 0;
+      }
+
+      //DetectionPerformance final_samples_performance (samples, cascade);
+      //DetectionStats final_samples_stats = final_samples_performance.analyze();
+      //show_performance_stats(final_samples_stats);
+
+      DetectionPerformance final_validation_performance (validation_set, cascade);
+      DetectionStats final_validation_stats = final_validation_performance.analyze();
+      //show_performance_stats(final_validation_stats);
+
+      current_false_positive_rate = final_validation_stats.false_positive_rate;
+      current_detection_rate = final_validation_stats.detection_rate;
     }
 
-    if (strong.is_face(negative_training_sample_pool.at(j))) {
-      samples.push_back(negative_training_sample_pool.at(j));
-      k++;
+    samples.clear();
+    for (int k = 0; k < positive_training_samples.size(); k++) {
+      samples.push_back(positive_training_samples.at(k));
     }
-    j++;
+
+    int j = 0, k = 0;
+    while (k < positive_training_samples.size()) {
+      if (j >= negative_training_sample_pool.size()) {
+        break;
+      }
+
+      if (cascade.is_face(negative_training_sample_pool.at(j))) {
+        samples.push_back(negative_training_sample_pool.at(j));
+        k++;
+      }
+      j++;
+    }
   }
-
-  StrongClassifier strong2;
-
-  // TODO the trainer should wrap the samples so that it "owns" the weights.
-  StrongClassifierTraining training2 (samples, features, strong2);
-  training2.trainWeakClassifier();
-  training2.trainWeakClassifier();
-  training2.trainWeakClassifier();
-  training2.trainWeakClassifier();
-  training2.trainWeakClassifier();
-  training2.trainWeakClassifier();
-  training2.trainWeakClassifier();
-  training2.trainWeakClassifier();
-  training2.trainWeakClassifier();
-  training2.trainWeakClassifier();
-
-  cascade << strong2;
-
-  show_performance_stats(samples, cascade);
 
   // perform detection with current strong classifier on set composed of:
   // - all positive samples
