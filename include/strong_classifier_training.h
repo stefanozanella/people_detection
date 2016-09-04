@@ -16,9 +16,10 @@ class StrongClassifierTraining {
 
   void initialize_weights(vector<TrainingSample>& samples);
   void normalize_weights(vector<TrainingSample>& samples);
-  WeakClassifier optimal_classifier(vector<TrainingSample>& samples, const vector<Feature>& features);
-  WeakClassifier optimal_classifier_for_feature(const Feature& feature, vector<TrainingSample>& samples);
+  WeakClassifier optimal_classifier(vector<TrainingSample>& samples, const vector<Feature>& features, const int max_false_negatives);
+  WeakClassifier optimal_classifier_for_feature(const Feature& feature, vector<TrainingSample>& samples, const int max_false_negatives);
   void update_weights(vector<TrainingSample>& samples, const WeakClassifier& classifier);
+  int max_false_negatives_for_detection_rate(const float detection_rate);
 
   public:
 
@@ -28,7 +29,7 @@ class StrongClassifierTraining {
     const vector<Feature>& features,
     StrongClassifier& strong
   );
-  void trainWeakClassifier();
+  void trainWeakClassifier(const float min_detection_rate);
 };
 
 #endif

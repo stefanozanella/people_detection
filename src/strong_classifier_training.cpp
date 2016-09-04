@@ -17,9 +17,23 @@ StrongClassifierTraining::StrongClassifierTraining(vector<TrainingSample>& sampl
   initialize_weights(samples);
 }
 
-void StrongClassifierTraining::trainWeakClassifier() {
+int StrongClassifierTraining::max_false_negatives_for_detection_rate(const float detection_rate) {
+  int positive_count = 0;
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    if (sample->isPositive) {
+      positive_count++;
+    }
+  }
+
+  return (int) (positive_count * (1 - detection_rate));
+}
+
+// TODO: Camel case?
+void StrongClassifierTraining::trainWeakClassifier(const float min_detection_rate) {
+  int max_false_negatives = max_false_negatives_for_detection_rate(min_detection_rate);
+
   normalize_weights(samples);
-  WeakClassifier weak = optimal_classifier(samples, features);
+  WeakClassifier weak = optimal_classifier(samples, features, max_false_negatives);
   update_weights(samples, weak);
 
   strong << weak;
@@ -52,20 +66,20 @@ void StrongClassifierTraining::normalize_weights(vector<TrainingSample>& samples
   }
 }
 
-WeakClassifier StrongClassifierTraining::optimal_classifier(vector<TrainingSample>& samples, const vector<Feature>& features) {
+WeakClassifier StrongClassifierTraining::optimal_classifier(vector<TrainingSample>& samples, const vector<Feature>& features, const int max_false_negatives) {
   WeakClassifier optimal_classifier;
 
   for (int k = 0; k < features.size(); k += 1) {
     optimal_classifier = min(
       optimal_classifier,
-      optimal_classifier_for_feature(features.at(k), samples)
+      optimal_classifier_for_feature(features.at(k), samples, max_false_negatives)
     );
   }
 
   return optimal_classifier;
 }
 
-WeakClassifier StrongClassifierTraining::optimal_classifier_for_feature(const Feature& feature, vector<TrainingSample>& samples) {
+WeakClassifier StrongClassifierTraining::optimal_classifier_for_feature(const Feature& feature, vector<TrainingSample>& samples, const int max_false_negatives) {
   vector<FeatureValue> feature_values;
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
@@ -75,13 +89,16 @@ WeakClassifier StrongClassifierTraining::optimal_classifier_for_feature(const Fe
   sort(feature_values.begin(), feature_values.end());
 
   float total_positive_weight_sum = 0, total_negative_weight_sum = 0, positive_below = 0, negative_below = 0;
+  int total_positive_samples = 0, positive_samples_below = 0;
 
   for (vector<FeatureValue>::iterator feature_value = feature_values.begin(); feature_value != feature_values.end(); feature_value++) {
     // TODO Feature envy? Maybe add a FeatureValue::update_weight_sum(float, float) ?
-    if (feature_value->sample.isPositive)
+    if (feature_value->sample.isPositive) {
       total_positive_weight_sum += feature_value->sample.weight;
-    else
+      total_positive_samples++;
+    } else {
       total_negative_weight_sum += feature_value->sample.weight;
+    }
   }
 
   float optimal_threshold, optimal_error = numeric_limits<float>::max();
@@ -91,17 +108,19 @@ WeakClassifier StrongClassifierTraining::optimal_classifier_for_feature(const Fe
   for (vector<FeatureValue>::iterator feature_value = feature_values.begin(); feature_value != feature_values.end(); feature_value++) {
     float error_when_polarity_is_negative = positive_below + total_negative_weight_sum - negative_below;
     float error_when_polarity_is_positive = negative_below + total_positive_weight_sum - positive_below;
+    int false_negatives_when_polarity_is_negative = positive_samples_below;
+    int false_negatives_when_polarity_is_positive = total_positive_samples - positive_samples_below;
 
     float optimal_error_for_this_sample;
     int optimal_polarity_for_this_sample;
     float optimal_threshold_for_this_sample;
 
-    if (error_when_polarity_is_positive <= error_when_polarity_is_negative) {
+    if (error_when_polarity_is_positive <= error_when_polarity_is_negative && false_negatives_when_polarity_is_positive <= max_false_negatives) {
       optimal_error_for_this_sample = error_when_polarity_is_positive;
       optimal_polarity_for_this_sample = 1;
       optimal_threshold_for_this_sample = feature_value->value;
     }
-    else {
+    else if (false_negatives_when_polarity_is_negative <= max_false_negatives) {
       optimal_error_for_this_sample = error_when_polarity_is_negative;
       optimal_polarity_for_this_sample = -1;
       optimal_threshold_for_this_sample = feature_value->value;
@@ -135,10 +154,12 @@ WeakClassifier StrongClassifierTraining::optimal_classifier_for_feature(const Fe
     // TODO Feature envy? Maybe review and use FeatureValue comparison +
     // FeatureValue::update_weight_sum(float, float)?
     if (feature_value->value > previous_feature_value)
-      if (feature_value->sample.isPositive)
+      if (feature_value->sample.isPositive) {
         positive_below += feature_value->sample.weight;
-      else
+        positive_samples_below++;
+      } else {
         negative_below += feature_value->sample.weight;
+      }
     previous_feature_value = feature_value->value;
   }
 

@@ -246,9 +246,10 @@ void show_performance_stats(DetectionStats stats) {
 }
 
 int main(int argc, char** argv) {
-  const float MINIMUM_DETECTION_RATE = 1.0;
+  const float MINIMUM_DETECTION_RATE = 0.98;
   const float MAXIMUM_FALSE_POSITIVE_RATE = 0.45;
   const float TARGET_FALSE_POSITIVE_RATE = 0.01;
+  const float ADJUSTMENT_STEP = 0.1;
   float current_false_positive_rate = 1.0, current_detection_rate = 1.0;
 
   vector<Feature> features;
@@ -299,6 +300,8 @@ int main(int argc, char** argv) {
   CascadeClassifier cascade;
 
   while (current_false_positive_rate > TARGET_FALSE_POSITIVE_RATE) {
+    cout << "Training new stage" << endl;
+
     float last_false_positive_rate = current_false_positive_rate;
     float last_detection_rate = current_detection_rate;
 
@@ -311,7 +314,7 @@ int main(int argc, char** argv) {
     while (current_false_positive_rate > MAXIMUM_FALSE_POSITIVE_RATE * last_false_positive_rate) {
       cascade.pop_back();
 
-      training.trainWeakClassifier();
+      training.trainWeakClassifier(MINIMUM_DETECTION_RATE * last_detection_rate);
 
       cascade.push_back(strong);
 
@@ -321,14 +324,18 @@ int main(int argc, char** argv) {
 
       DetectionPerformance validation_performance (validation_set, cascade);
       DetectionStats validation_stats = validation_performance.analyze();
-      //show_performance_stats(validation_stats);
+      show_performance_stats(validation_stats);
 
       current_false_positive_rate = validation_stats.false_positive_rate;
       current_detection_rate = validation_stats.detection_rate;
 
       if (current_detection_rate < MINIMUM_DETECTION_RATE * last_detection_rate) {
         // TODO tune threshold to match detection rate requirements
-        cout << "HERE WE GO" << endl;
+        // [ ] Change StrongClassifier::operator<< to push_back
+        // [ ] Add StrongClassifier::pop_back
+        // [ ] Add StrongClassifierTraining::adjustLastTrainedClassifier(adjustment_step)
+        // [ ] Change this conditional into a loop
+        cout << "Wanted detection rate: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;
         return 0;
       }
 
