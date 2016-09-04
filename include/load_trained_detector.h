@@ -51,12 +51,12 @@ bool load_trained_detector(const string& filename, CascadeClassifier& classifier
         );
       }
 
-      stage_classifier << WeakClassifier(
+      stage_classifier.push_back(WeakClassifier(
         feature,
         (*weak)["threshold"].as<float>(),
         (*weak)["polarity"].as<int>(),
         (*weak)["error"].as<float>()
-      );
+      ));
     }
 
     classifier.push_back(stage_classifier);

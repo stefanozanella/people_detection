@@ -331,8 +331,7 @@ int main(int argc, char** argv) {
 
       if (current_detection_rate < MINIMUM_DETECTION_RATE * last_detection_rate) {
         // TODO tune threshold to match detection rate requirements
-        // [ ] Change StrongClassifier::operator<< to push_back
-        // [ ] Add StrongClassifier::pop_back
+        // [x] Change StrongClassifier::operator<< to push_back
         // [ ] Add StrongClassifierTraining::adjustLastTrainedClassifier(adjustment_step)
         // [ ] Change this conditional into a loop
         cout << "Wanted detection rate: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;

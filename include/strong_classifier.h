@@ -18,7 +18,7 @@ class StrongClassifier {
   public:
 
   StrongClassifier();
-  StrongClassifier& operator<<(const WeakClassifier& classifier);
+  void push_back(const WeakClassifier& weak);
   bool is_face(const Sample& sample) const;
   void force_detection(const Sample& sample);
   void save(Storage& storage) const;

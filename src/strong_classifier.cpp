@@ -4,11 +4,9 @@ StrongClassifier::StrongClassifier() :
   threshold (0)
 {}
 
-StrongClassifier& StrongClassifier::operator<<(const WeakClassifier& classifier) {
+void StrongClassifier::push_back(const WeakClassifier& classifier) {
   classifiers.push_back(classifier);
   threshold += 0.5 * classifier.classification_factor();
-
-  return *this;
 }
 
 float StrongClassifier::classification_value(const Sample& sample) const {

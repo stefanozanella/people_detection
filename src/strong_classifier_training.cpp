@@ -36,7 +36,7 @@ void StrongClassifierTraining::trainWeakClassifier(const float min_detection_rat
   WeakClassifier weak = optimal_classifier(samples, features, max_false_negatives);
   update_weights(samples, weak);
 
-  strong << weak;
+  strong.push_back(weak);
 }
 
 void StrongClassifierTraining::initialize_weights(vector<TrainingSample>& samples) {
