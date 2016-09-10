@@ -27,6 +27,10 @@ void StrongClassifier::force_detection(const Sample& sample) {
   threshold = classification_value(sample);
 }
 
+void StrongClassifier::adjust_threshold(const float adjustment) {
+  threshold -= adjustment;
+}
+
 void StrongClassifier::save(Storage& storage) const {
   storage.add("threshold", threshold);
   for (vector<WeakClassifier>::const_iterator classifier = classifiers.begin(); classifier != classifiers.end(); classifier++) {

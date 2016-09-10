@@ -20,8 +20,9 @@ class StrongClassifier {
   StrongClassifier();
   void push_back(const WeakClassifier& weak);
   bool is_face(const Sample& sample) const;
-  void force_detection(const Sample& sample);
+  void force_detection(const Sample& sample); // TODO Remove
   void save(Storage& storage) const;
+  void adjust_threshold(const float adjustment);
 };
 
 #endif

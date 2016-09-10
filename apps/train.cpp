@@ -250,7 +250,7 @@ int main(int argc, char** argv) {
   const float MAXIMUM_FALSE_POSITIVE_RATE = 0.45;
   const float TARGET_FALSE_POSITIVE_RATE = 0.01;
   const float ADJUSTMENT_STEP = 0.1;
-  float current_false_positive_rate = 1.0, current_detection_rate = 1.0;
+  float current_false_positive_rate = 1.0, current_detection_rate = 0.0;
 
   vector<Feature> features;
 
@@ -326,16 +326,34 @@ int main(int argc, char** argv) {
       DetectionStats validation_stats = validation_performance.analyze();
       show_performance_stats(validation_stats);
 
+      // cout << "Last vs current DR: " << validation_stats.detection_rate << " - " << current_detection_rate << endl;
+      // cout << "Last vs current FPR: " << validation_stats.false_positive_rate << " - " << current_false_positive_rate << endl;
+      // if ((validation_stats.detection_rate <= current_detection_rate) && (validation_stats.false_positive_rate <= current_false_positive_rate)) {
+      //   cout << "Cannot improve stage performances any further. Skipping" << endl;
+      //   break;
+      // }
+
       current_false_positive_rate = validation_stats.false_positive_rate;
       current_detection_rate = validation_stats.detection_rate;
 
-      if (current_detection_rate < MINIMUM_DETECTION_RATE * last_detection_rate) {
+      while (current_detection_rate < MINIMUM_DETECTION_RATE * last_detection_rate) {
+        cout << "Current detection rate: " << current_detection_rate << " | Wanted detection rate: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;
         // TODO tune threshold to match detection rate requirements
         // [x] Change StrongClassifier::operator<< to push_back
-        // [ ] Add StrongClassifierTraining::adjustLastTrainedClassifier(adjustment_step)
+        // [x] Add StrongClassifierTraining::adjustLastTrainedClassifier(adjustment_step)
+        // [ ] Adjust threshold according to step
         // [ ] Change this conditional into a loop
-        cout << "Wanted detection rate: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;
-        return 0;
+
+        cascade.pop_back();
+        strong.adjust_threshold(ADJUSTMENT_STEP);
+        cascade.push_back(strong);
+
+        DetectionPerformance adjustment_performance (validation_set, cascade);
+        DetectionStats adjustment_stats = adjustment_performance.analyze();
+        show_performance_stats(adjustment_stats);
+
+        current_false_positive_rate = adjustment_stats.false_positive_rate;
+        current_detection_rate = adjustment_stats.detection_rate;
       }
 
       //DetectionPerformance final_samples_performance (samples, cascade);
