@@ -312,6 +312,7 @@ int main(int argc, char** argv) {
     cascade.push_back(strong);
 
     while (current_false_positive_rate > MAXIMUM_FALSE_POSITIVE_RATE * last_false_positive_rate) {
+      cout << "\tTraining new weak classifier" << endl;
       cascade.pop_back();
 
       training.trainWeakClassifier(MINIMUM_DETECTION_RATE * last_detection_rate);
@@ -325,13 +326,6 @@ int main(int argc, char** argv) {
       DetectionPerformance validation_performance (validation_set, cascade);
       DetectionStats validation_stats = validation_performance.analyze();
       show_performance_stats(validation_stats);
-
-      // cout << "Last vs current DR: " << validation_stats.detection_rate << " - " << current_detection_rate << endl;
-      // cout << "Last vs current FPR: " << validation_stats.false_positive_rate << " - " << current_false_positive_rate << endl;
-      // if ((validation_stats.detection_rate <= current_detection_rate) && (validation_stats.false_positive_rate <= current_false_positive_rate)) {
-      //   cout << "Cannot improve stage performances any further. Skipping" << endl;
-      //   break;
-      // }
 
       current_false_positive_rate = validation_stats.false_positive_rate;
       current_detection_rate = validation_stats.detection_rate;
@@ -363,6 +357,21 @@ int main(int argc, char** argv) {
       DetectionPerformance final_validation_performance (validation_set, cascade);
       DetectionStats final_validation_stats = final_validation_performance.analyze();
       //show_performance_stats(final_validation_stats);
+
+      cout << "Target FPR for stage: " << MAXIMUM_FALSE_POSITIVE_RATE * last_false_positive_rate << endl;
+      cout << "Current FPR: " << final_validation_stats.false_positive_rate << endl;
+
+      cout << endl;
+
+      cout << "Target DR for stage: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;
+      cout << "Current DR: " << final_validation_stats.detection_rate << endl;
+
+      //cout << "Last vs current DR: " << final_validation_stats.detection_rate << " - " << current_detection_rate << endl;
+      //cout << "Last vs current FPR: " << final_validation_stats.false_positive_rate << " - " << current_false_positive_rate << endl;
+      if ((final_validation_stats.detection_rate <= current_detection_rate) && (final_validation_stats.false_positive_rate >= current_false_positive_rate)) {
+        cout << "Cannot improve stage performances any further. Skipping" << endl;
+        break;
+      }
 
       current_false_positive_rate = final_validation_stats.false_positive_rate;
       current_detection_rate = final_validation_stats.detection_rate;
