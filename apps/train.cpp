@@ -249,7 +249,7 @@ int main(int argc, char** argv) {
   const float MINIMUM_DETECTION_RATE = 0.98;
   const float MAXIMUM_FALSE_POSITIVE_RATE = 0.45;
   const float TARGET_FALSE_POSITIVE_RATE = 0.01;
-  const float ADJUSTMENT_STEP = 0.1;
+  const float ADJUSTMENT_RATIO = 0.1;
   float current_false_positive_rate = 1.0, current_detection_rate = 0.0;
 
   vector<Feature> features;
@@ -319,10 +319,6 @@ int main(int argc, char** argv) {
 
       cascade.push_back(strong);
 
-      //DetectionPerformance samples_performance (samples, cascade);
-      //DetectionStats samples_stats = samples_performance.analyze();
-      //show_performance_stats(samples_stats);
-
       DetectionPerformance validation_performance (validation_set, cascade);
       DetectionStats validation_stats = validation_performance.analyze();
       show_performance_stats(validation_stats);
@@ -332,14 +328,9 @@ int main(int argc, char** argv) {
 
       while (current_detection_rate < MINIMUM_DETECTION_RATE * last_detection_rate) {
         cout << "Current detection rate: " << current_detection_rate << " | Wanted detection rate: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;
-        // TODO tune threshold to match detection rate requirements
-        // [x] Change StrongClassifier::operator<< to push_back
-        // [x] Add StrongClassifierTraining::adjustLastTrainedClassifier(adjustment_step)
-        // [ ] Adjust threshold according to step
-        // [ ] Change this conditional into a loop
 
         cascade.pop_back();
-        strong.adjust_threshold(ADJUSTMENT_STEP);
+        training.adjust_threshold(ADJUSTMENT_RATIO);
         cascade.push_back(strong);
 
         DetectionPerformance adjustment_performance (validation_set, cascade);

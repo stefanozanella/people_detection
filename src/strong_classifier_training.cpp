@@ -3,11 +3,13 @@
 
 #include <algorithm>
 #include <limits>
+#include <cmath>
 
 using std::max;
 using std::min;
 using std::sort;
 using std::numeric_limits;
+using std::abs;
 
 StrongClassifierTraining::StrongClassifierTraining(vector<TrainingSample>& samples, const vector<Feature>& features, StrongClassifier& strong) :
   samples (samples),
@@ -33,10 +35,16 @@ void StrongClassifierTraining::trainWeakClassifier(const float min_detection_rat
   int max_false_negatives = max_false_negatives_for_detection_rate(min_detection_rate);
 
   normalize_weights(samples);
-  WeakClassifier weak = optimal_classifier(samples, features, max_false_negatives);
-  update_weights(samples, weak);
+  last_trained_classifier = optimal_classifier(samples, features, max_false_negatives);
+  update_weights(samples, last_trained_classifier);
 
-  strong.push_back(weak);
+  strong.push_back(last_trained_classifier);
+}
+
+void StrongClassifierTraining::adjust_threshold(const float adjustment) {
+  strong.pop_back();
+  last_trained_classifier.threshold += last_trained_classifier.polarity * abs(last_trained_classifier.threshold) * adjustment;
+  strong.push_back(last_trained_classifier);
 }
 
 void StrongClassifierTraining::initialize_weights(vector<TrainingSample>& samples) {

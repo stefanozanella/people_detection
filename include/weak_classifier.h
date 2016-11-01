@@ -7,12 +7,12 @@
 #include "storage.h"
 
 class WeakClassifier {
+  public:
+
   Feature feature;
   float threshold;
   int polarity;
   float error;
-
-  public:
 
   WeakClassifier();
   WeakClassifier(const Feature& feature, float threshold, int polarity, float error);

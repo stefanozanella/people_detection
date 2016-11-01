@@ -9,6 +9,11 @@ void StrongClassifier::push_back(const WeakClassifier& classifier) {
   threshold += 0.5 * classifier.classification_factor();
 }
 
+void StrongClassifier::pop_back() {
+  threshold -= 0.5 * classifiers.back().classification_factor();
+  classifiers.pop_back();
+}
+
 float StrongClassifier::classification_value(const Sample& sample) const {
   float classification_value = 0;
 
@@ -25,10 +30,6 @@ bool StrongClassifier::is_face(const Sample& sample) const {
 
 void StrongClassifier::force_detection(const Sample& sample) {
   threshold = classification_value(sample);
-}
-
-void StrongClassifier::adjust_threshold(const float adjustment) {
-  threshold -= adjustment;
 }
 
 void StrongClassifier::save(Storage& storage) const {

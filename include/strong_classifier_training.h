@@ -13,6 +13,7 @@ class StrongClassifierTraining {
   vector<TrainingSample>& samples;
   const vector<Feature>& features;
   StrongClassifier& strong;
+  WeakClassifier last_trained_classifier;
 
   void initialize_weights(vector<TrainingSample>& samples);
   void normalize_weights(vector<TrainingSample>& samples);
@@ -30,6 +31,7 @@ class StrongClassifierTraining {
     StrongClassifier& strong
   );
   void trainWeakClassifier(const float min_detection_rate);
+  void adjust_threshold(const float adjustment);
 };
 
 #endif
