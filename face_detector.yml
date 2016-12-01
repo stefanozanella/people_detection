@@ -1,0 +1,134 @@
+stages:
+  - threshold: 0.6496481
+    weak_classifiers:
+      - threshold: 5.792425
+        error: 0.2142835
+        polarity: -1
+        feature:
+          base_size: 20
+          rectangles:
+            - x: 3
+              y: 0
+              width: 16
+              height: 5
+              multiplier: -1
+            - x: 3
+              y: 5
+              width: 16
+              height: 5
+              multiplier: 1
+            - x: 3
+              y: 10
+              width: 16
+              height: 5
+              multiplier: -1
+  - threshold: 1.150317
+    weak_classifiers:
+      - threshold: 0.0541789
+        error: 0.0910705
+        polarity: 1
+        feature:
+          base_size: 20
+          rectangles:
+            - x: 16
+              y: 15
+              width: 1
+              height: 1
+              multiplier: -1
+            - x: 16
+              y: 16
+              width: 1
+              height: 1
+              multiplier: 1
+            - x: 16
+              y: 17
+              width: 1
+              height: 1
+              multiplier: -1
+  - threshold: 0.4376651
+    weak_classifiers:
+      - threshold: 1.507891
+        error: 0.2941464
+        polarity: 1
+        feature:
+          base_size: 20
+          rectangles:
+            - x: 5
+              y: 1
+              width: 12
+              height: 5
+              multiplier: -1
+            - x: 5
+              y: 6
+              width: 12
+              height: 5
+              multiplier: 1
+  - threshold: 0.1213602
+    weak_classifiers:
+      - threshold: 0.1046529
+        error: 0.439616
+        polarity: 1
+        feature:
+          base_size: 20
+          rectangles:
+            - x: 9
+              y: 13
+              width: 1
+              height: 1
+              multiplier: -1
+            - x: 9
+              y: 14
+              width: 1
+              height: 1
+              multiplier: 1
+            - x: 9
+              y: 15
+              width: 1
+              height: 1
+              multiplier: -1
+  - threshold: 0.01704336
+    weak_classifiers:
+      - threshold: 0.1174781
+        error: 0.4914791
+        polarity: 1
+        feature:
+          base_size: 20
+          rectangles:
+            - x: 10
+              y: 16
+              width: 1
+              height: 1
+              multiplier: -1
+            - x: 10
+              y: 17
+              width: 1
+              height: 1
+              multiplier: 1
+            - x: 10
+              y: 18
+              width: 1
+              height: 1
+              multiplier: -1
+  - threshold: -0.003575202
+    weak_classifiers:
+      - threshold: 0.1174781
+        error: 0.5017876
+        polarity: 1
+        feature:
+          base_size: 20
+          rectangles:
+            - x: 10
+              y: 16
+              width: 1
+              height: 1
+              multiplier: -1
+            - x: 10
+              y: 17
+              width: 1
+              height: 1
+              multiplier: 1
+            - x: 10
+              y: 18
+              width: 1
+              height: 1
+              multiplier: -1
