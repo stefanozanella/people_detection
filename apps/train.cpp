@@ -246,7 +246,7 @@ void show_performance_stats(DetectionStats stats) {
 }
 
 int main(int argc, char** argv) {
-  const float MINIMUM_DETECTION_RATE = 0.98;
+  const float MINIMUM_DETECTION_RATE = 0.85;
   const float MAXIMUM_FALSE_POSITIVE_RATE = 0.45;
   const float TARGET_FALSE_POSITIVE_RATE = 0.01;
   const float ADJUSTMENT_RATIO = 0.1;
@@ -299,6 +299,9 @@ int main(int argc, char** argv) {
 
   CascadeClassifier cascade;
 
+  float last_stage_false_positive_rate = current_false_positive_rate;
+  float last_stage_detection_rate = current_detection_rate;
+
   while (current_false_positive_rate > TARGET_FALSE_POSITIVE_RATE) {
     cout << "Training new stage" << endl;
 
@@ -311,7 +314,13 @@ int main(int argc, char** argv) {
 
     cascade.push_back(strong);
 
+    // TODO
+    // We should check also here if we're improving the DR with respect to the
+    // previous iteration. If not, we should get out of the loop
     while (current_false_positive_rate > MAXIMUM_FALSE_POSITIVE_RATE * last_false_positive_rate) {
+      float last_confirmed_detection_rate = current_detection_rate;
+      float last_confirmed_false_positive_rate = current_false_positive_rate;
+
       cout << "\tTraining new weak classifier" << endl;
       cascade.pop_back();
 
@@ -323,11 +332,27 @@ int main(int argc, char** argv) {
       DetectionStats validation_stats = validation_performance.analyze();
       show_performance_stats(validation_stats);
 
+      cout << "Last FPR: " << current_false_positive_rate << endl;
+      if (validation_stats.false_positive_rate >= current_false_positive_rate) {
+        cascade.pop_back();
+        training.discard_last_trained_classifier();
+        cascade.push_back(strong);
+
+        cout << "Breaking the loop" << endl;
+        break;
+      }
+
+      float reference_false_positive_rate = current_false_positive_rate;
+
       current_false_positive_rate = validation_stats.false_positive_rate;
       current_detection_rate = validation_stats.detection_rate;
 
-      while (current_detection_rate < MINIMUM_DETECTION_RATE * last_detection_rate) {
+      float reference_detection_rate = current_detection_rate;
+
+      while (current_detection_rate < MINIMUM_DETECTION_RATE) {
         cout << "Current detection rate: " << current_detection_rate << " | Wanted detection rate: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;
+
+        reference_false_positive_rate = current_false_positive_rate;
 
         cascade.pop_back();
         training.adjust_threshold(ADJUSTMENT_RATIO);
@@ -337,8 +362,28 @@ int main(int argc, char** argv) {
         DetectionStats adjustment_stats = adjustment_performance.analyze();
         show_performance_stats(adjustment_stats);
 
+        bool is_improving = adjustment_stats.detection_rate > current_false_positive_rate;
+
         current_false_positive_rate = adjustment_stats.false_positive_rate;
         current_detection_rate = adjustment_stats.detection_rate;
+
+        if (!is_improving) {
+          cout << "Adjustment is not improving performance" << endl;
+          break;
+        }
+      }
+
+      //cout << "Last FPR: " << reference_false_positive_rate << endl;
+      //cout << "Current DR: " << current_detection_rate << " | Last DR: " << reference_detection_rate << endl;
+
+      if (current_detection_rate <= reference_detection_rate && current_false_positive_rate >= reference_false_positive_rate) {
+        //cout << "\t\tCurrent DR: " << current_detection_rate << " | Last DR: " << reference_detection_rate << endl;
+        cascade.pop_back();
+        training.discard_last_trained_classifier();
+        cascade.push_back(strong);
+
+        //cout << "Breaking the loop" << endl;
+        break;
       }
 
       //DetectionPerformance final_samples_performance (samples, cascade);
@@ -349,24 +394,48 @@ int main(int argc, char** argv) {
       DetectionStats final_validation_stats = final_validation_performance.analyze();
       //show_performance_stats(final_validation_stats);
 
-      cout << "Target FPR for stage: " << MAXIMUM_FALSE_POSITIVE_RATE * last_false_positive_rate << endl;
-      cout << "Current FPR: " << final_validation_stats.false_positive_rate << endl;
+      //cout << "Target FPR for stage: " << MAXIMUM_FALSE_POSITIVE_RATE * last_false_positive_rate << endl;
+      //cout << "Current FPR: " << final_validation_stats.false_positive_rate << endl;
 
       cout << endl;
 
-      cout << "Target DR for stage: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;
-      cout << "Current DR: " << final_validation_stats.detection_rate << endl;
+      //cout << "Target DR for stage: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;
+      //cout << "Current DR: " << final_validation_stats.detection_rate << endl;
 
-      //cout << "Last vs current DR: " << final_validation_stats.detection_rate << " - " << current_detection_rate << endl;
-      //cout << "Last vs current FPR: " << final_validation_stats.false_positive_rate << " - " << current_false_positive_rate << endl;
-      if ((final_validation_stats.detection_rate <= current_detection_rate) && (final_validation_stats.false_positive_rate >= current_false_positive_rate)) {
-        cout << "Cannot improve stage performances any further. Skipping" << endl;
+      if (current_detection_rate <= last_confirmed_detection_rate && current_false_positive_rate >= last_confirmed_false_positive_rate) {
+        //cout << "\t\tCurrent DR: " << current_detection_rate << " | Last DR: " << reference_detection_rate << endl;
+        cascade.pop_back();
+        training.discard_last_trained_classifier();
+        cascade.push_back(strong);
+
+        cout << "Breaking the loop 2" << endl;
+
+        //last_stage_false_positive_rate = current_false_positive_rate;
+        //last_stage_detection_rate = current_detection_rate;
+
         break;
       }
+
 
       current_false_positive_rate = final_validation_stats.false_positive_rate;
       current_detection_rate = final_validation_stats.detection_rate;
     }
+
+    //cout << "Running from here" << endl;
+
+    // TODO We need to store the last performances at the end of each weak
+    // classifier training
+    cout << "\t\tCurrent DR: " << current_detection_rate << " | Last stage DR: " << last_stage_detection_rate << endl;
+    cout << "\t\tCurrent FPR: " << current_false_positive_rate << " | Last FPR: " << last_stage_false_positive_rate << endl;
+
+    if (current_false_positive_rate >= last_stage_false_positive_rate && current_detection_rate <= last_stage_detection_rate) {
+      cout << "Cannot improve performances further. Giving up." << endl;
+      cascade.pop_back();
+      break;
+    }
+
+    last_stage_false_positive_rate = current_false_positive_rate;
+    last_stage_detection_rate = current_detection_rate;
 
     samples.clear();
     for (int k = 0; k < positive_training_samples.size(); k++) {

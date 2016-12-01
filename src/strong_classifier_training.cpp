@@ -42,9 +42,12 @@ void StrongClassifierTraining::trainWeakClassifier(const float min_detection_rat
 }
 
 void StrongClassifierTraining::adjust_threshold(const float adjustment) {
+  reset_weights(samples, last_trained_classifier);
   strong.pop_back();
   last_trained_classifier.threshold += last_trained_classifier.polarity * abs(last_trained_classifier.threshold) * adjustment;
+  last_trained_classifier.error = compute_classifier_error(samples, last_trained_classifier);
   strong.push_back(last_trained_classifier);
+  update_weights(samples, last_trained_classifier);
 }
 
 void StrongClassifierTraining::initialize_weights(vector<TrainingSample>& samples) {
@@ -176,6 +179,7 @@ WeakClassifier StrongClassifierTraining::optimal_classifier_for_feature(const Fe
 
 void StrongClassifierTraining::update_weights(vector<TrainingSample>& samples, const WeakClassifier& classifier) {
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    // TODO Cleanup
     if (sample->isPositive && !classifier.classify(*sample)) {
       //cout << "Ouch! False negative" << endl;
     } else if (!sample->isPositive && classifier.classify(*sample)) {
@@ -187,3 +191,30 @@ void StrongClassifierTraining::update_weights(vector<TrainingSample>& samples, c
   }
 }
 
+void StrongClassifierTraining::reset_weights(vector<TrainingSample>& samples, const WeakClassifier& classifier) {
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    // TODO Cleanup
+    if (sample->isPositive && !classifier.classify(*sample)) {
+      //cout << "Ouch! False negative" << endl;
+    } else if (!sample->isPositive && classifier.classify(*sample)) {
+      //cout << "Meh! False positive" << endl;
+    }
+    else {
+      sample->weight /= classifier.error_weight_factor();
+    }
+  }
+}
+
+float StrongClassifierTraining::compute_classifier_error(vector<TrainingSample>& samples, const WeakClassifier& classifier) {
+  float classifier_error = 0.0f;
+  for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
+    if (sample->isPositive != classifier.classify(*sample)) {
+      classifier_error += sample->weight;
+    }
+  }
+  return classifier_error;
+}
+
+void StrongClassifierTraining::discard_last_trained_classifier() {
+  strong.pop_back();
+}
