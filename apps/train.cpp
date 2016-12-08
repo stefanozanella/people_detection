@@ -368,6 +368,8 @@ int main(int argc, char** argv) {
         current_detection_rate = adjustment_stats.detection_rate;
 
         if (!is_improving) {
+          cascade.pop_back();
+
           cout << "Adjustment is not improving performance" << endl;
           break;
         }
