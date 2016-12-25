@@ -14,7 +14,7 @@
 #include <pcl/octree/octree_search.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/features/normal_3d.h>
-#include "pcl/segmentation/single_seed_region_growing.h"
+#include "pcl/segmentation/region_growing_rgb.h"
 
 #include <pcl/search/search.h>
 #include <pcl/search/kdtree.h>
@@ -42,7 +42,7 @@ typedef pcl::octree::OctreePointCloudSearch<PointT> OctreeSearch;
 typedef pcl::search::KdTree<PointT> KdTree;
 typedef pcl::PointCloud<pcl::Normal> NormalCloudT;
 typedef pcl::NormalEstimation<PointT, pcl::Normal> NormalEstimation;
-typedef pcl::SingleSeedRegionGrowing<PointT, pcl::Normal> SingleSeedRegionGrowing;
+typedef pcl::RegionGrowingRGB<PointT, pcl::Normal> RegionGrowingRGB;
 
 typedef struct Face {
   PointXYZ min_boundary, max_boundary;
@@ -104,39 +104,6 @@ bool is_the_size_of_a_face(const PointCloudT::Ptr sample, int x_from, int y_from
     min_boundary,
     max_boundary
   );
-
-
-  //PointCloudT::Ptr filtered_cloud (new PointCloudT);
-  //VoxelGrid voxel;
-  //voxel.setInputCloud(sample);
-  //voxel.setLeafSize(0.01, 0.01, 0.01);
-  //voxel.filter(*filtered_cloud);
-
-  //pcl::PointIndices::Ptr indices (new pcl::PointIndices());
-  //pcl::CropBox<PointT> crop;
-  //crop.setInputCloud(filtered_cloud);
-  //crop.setMin(min_boundary.getVector4fMap());
-  //crop.setMax(max_boundary.getVector4fMap());
-  //crop.filter(indices->indices);
-
-  //pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT>);
-  //tree->setInputCloud(filtered_cloud);
-
-  //pcl::EuclideanClusterExtraction<PointT> ec;
-  //ec.setInputCloud(filtered_cloud);
-  //ec.setIndices(indices);
-  //ec.setSearchMethod(tree);
-  //ec.setClusterTolerance(0.02); // 2cm
-  //ec.setMinClusterSize(100);
-  //ec.setMaxClusterSize(25000);
-
-  //vector<pcl::PointIndices> clusters;
-  //ec.extract(clusters);
-
-
-  //cout << "Cluster size: " << clusters.size() << endl;
-
-
 
   float distance = sqrt(
     pow(max_boundary.x - min_boundary.x, 2) +
@@ -215,6 +182,46 @@ void find_faces(const PointCloudT::Ptr sample, const CascadeClassifier& detector
   cout << "Pos: " << pos << ", Neg: " << neg << endl;
 }
 
+void expand_faces_to_bodies(const PointCloudT::Ptr sample, vector<Face>& faces) {
+  PointCloudT::Ptr filtered_sample = PointCloudT::Ptr (new PointCloudT);
+
+  VoxelGrid voxel;
+  voxel.setInputCloud(sample);
+  voxel.setLeafSize(0.01f, 0.01f, 0.01f);
+  voxel.filter(*filtered_sample);
+
+  KdTree::Ptr tree = KdTree::Ptr (new KdTree);
+  tree->setInputCloud(filtered_sample);
+
+  RegionGrowingRGB reg;
+  reg.setInputCloud(filtered_sample);
+  reg.setSearchMethod(tree);
+  reg.setDistanceThreshold(10);
+  reg.setPointColorThreshold(6);
+  reg.setRegionColorThreshold(5);
+  reg.setMinClusterSize(600);
+
+  vector<pcl::PointIndices> clusters;
+
+  for (vector<Face>::iterator face = faces.begin(); face != faces.end(); face++) {
+    vector<int> closest_index (1);
+    vector<float> closest_distance (1);
+
+    tree->nearestKSearch(face->center, 1, closest_index, closest_distance);
+
+    pcl::PointIndices cluster;
+    reg.getSegmentFromPoint(closest_index.at(0), cluster);
+    clusters.push_back(cluster);
+  }
+
+  cout << "Total clusters found: " << clusters.size() << endl;
+
+  for (vector<pcl::PointIndices>::iterator c = clusters.begin(); c != clusters.end(); c++) {
+    cout << c->indices.size() << endl;
+    // TODO draw cluster
+  }
+}
+
 int main(int argc, char** argv) {
   CascadeClassifier detector;
 
@@ -236,7 +243,8 @@ int main(int argc, char** argv) {
 
     vector<Face> faces;
     find_faces(sample_cloud, detector, faces);
-    show_faces(sample_cloud, faces);
+    expand_faces_to_bodies(sample_cloud, faces);
+    //show_faces(sample_cloud, faces);
   }
 
   return 0;

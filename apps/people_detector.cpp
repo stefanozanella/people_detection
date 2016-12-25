@@ -440,6 +440,8 @@ int main(int argc, char** argv) {
   for (; sample != no_more_samples; sample++) {
     PointCloudT::Ptr sample_cloud (new PointCloudT);
 
+    std::cout << sample->path().string() << std::endl;
+
     if (loadPCDFile<PointT>(sample->path().string(), *(sample_cloud)) == -1) {
       cout << "Couldn't load cloud file " << sample->path() << endl;
       return -1;
@@ -454,7 +456,7 @@ int main(int argc, char** argv) {
     voxel.setLeafSize(0.01, 0.01, 0.01);
     voxel.filter(*filtered_cloud);
 
-    show_faces(filtered_cloud, faces);
+    //show_faces(filtered_cloud, faces);
 
     //find_bodies(filtered_cloud, faces);
   }
