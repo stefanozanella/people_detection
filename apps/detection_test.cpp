@@ -182,26 +182,17 @@ void find_faces(const PointCloudT::Ptr sample, const CascadeClassifier& detector
   cout << "Pos: " << pos << ", Neg: " << neg << endl;
 }
 
-void expand_faces_to_bodies(const PointCloudT::Ptr sample, vector<Face>& faces) {
-  PointCloudT::Ptr filtered_sample = PointCloudT::Ptr (new PointCloudT);
-
-  VoxelGrid voxel;
-  voxel.setInputCloud(sample);
-  voxel.setLeafSize(0.01f, 0.01f, 0.01f);
-  voxel.filter(*filtered_sample);
-
+void expand_faces_to_bodies(const PointCloudT::Ptr sample, vector<Face>& faces, vector<pcl::PointIndices::Ptr>& bodies) {
   KdTree::Ptr tree = KdTree::Ptr (new KdTree);
-  tree->setInputCloud(filtered_sample);
+  tree->setInputCloud(sample);
 
   RegionGrowingRGB reg;
-  reg.setInputCloud(filtered_sample);
+  reg.setInputCloud(sample);
   reg.setSearchMethod(tree);
   reg.setDistanceThreshold(10);
   reg.setPointColorThreshold(6);
   reg.setRegionColorThreshold(5);
   reg.setMinClusterSize(600);
-
-  vector<pcl::PointIndices> clusters;
 
   for (vector<Face>::iterator face = faces.begin(); face != faces.end(); face++) {
     vector<int> closest_index (1);
@@ -209,16 +200,9 @@ void expand_faces_to_bodies(const PointCloudT::Ptr sample, vector<Face>& faces) 
 
     tree->nearestKSearch(face->center, 1, closest_index, closest_distance);
 
-    pcl::PointIndices cluster;
-    reg.getSegmentFromPoint(closest_index.at(0), cluster);
-    clusters.push_back(cluster);
-  }
-
-  cout << "Total clusters found: " << clusters.size() << endl;
-
-  for (vector<pcl::PointIndices>::iterator c = clusters.begin(); c != clusters.end(); c++) {
-    cout << c->indices.size() << endl;
-    // TODO draw cluster
+    pcl::PointIndices::Ptr body (new pcl::PointIndices);
+    reg.getSegmentFromPoint(closest_index.at(0), *body);
+    bodies.push_back(body);
   }
 }
 
@@ -242,8 +226,43 @@ int main(int argc, char** argv) {
     }
 
     vector<Face> faces;
+    vector<pcl::PointIndices::Ptr> bodies;
+
     find_faces(sample_cloud, detector, faces);
-    expand_faces_to_bodies(sample_cloud, faces);
+
+    PointCloudT::Ptr filtered_sample = PointCloudT::Ptr (new PointCloudT);
+
+    VoxelGrid voxel;
+    voxel.setInputCloud(sample_cloud);
+    voxel.setLeafSize(0.01f, 0.01f, 0.01f);
+    voxel.filter(*filtered_sample);
+
+    expand_faces_to_bodies(filtered_sample, faces, bodies);
+
+    cout << "Total clusters found: " << bodies.size() << endl;
+
+    for (vector<pcl::PointIndices::Ptr>::iterator body = bodies.begin(); body != bodies.end(); body++) {
+      ExtractIndices ei;
+      ei.setInputCloud(filtered_sample);
+      ei.setIndices(*body);
+
+      PointCloudT::Ptr body_cloud (new PointCloudT);
+      ei.filter(*body_cloud);
+
+
+      /////////////////////////////////////
+      pcl::visualization::PCLVisualizer viewer("PCL Viewer");
+      viewer.setCameraPosition(0,0,-2,0,-1,0,0);
+
+      viewer.addPointCloud<PointT>(
+          body_cloud,
+          pcl::visualization::PointCloudColorHandlerRGBField<PointT>(body_cloud),
+          "body"
+          );
+
+      viewer.spin();
+      //////////////////////////////////////
+    }
     //show_faces(sample_cloud, faces);
   }
 
