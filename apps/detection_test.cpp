@@ -202,7 +202,10 @@ void expand_faces_to_bodies(const PointCloudT::Ptr sample, vector<Face>& faces, 
 
     pcl::PointIndices::Ptr body (new pcl::PointIndices);
     reg.getSegmentFromPoint(closest_index.at(0), *body);
-    bodies.push_back(body);
+
+    if (body->indices.size() > 2000) {
+      bodies.push_back(body);
+    }
   }
 }
 
