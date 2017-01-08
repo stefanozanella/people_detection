@@ -245,33 +245,63 @@ int main(int argc, char** argv) {
     voxel.setLeafSize(0.01f, 0.01f, 0.01f);
     voxel.filter(*filtered_sample);
 
-    // TODO Remove ground plane?
-    pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
-    pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-    pcl::SACSegmentation<PointT> seg;
-    seg.setOptimizeCoefficients(true);
-    seg.setModelType(pcl::SACMODEL_PARALLEL_PLANE);
-    seg.setMethodType(pcl::SAC_RANSAC);
-    seg.setMaxIterations(1000);
-    seg.setDistanceThreshold(0.1);
-    seg.setAxis(Eigen::Vector3f(1,0,0));
-    seg.setEpsAngle(0.05);//(-10.0f * (M_PI/180.0f));
+    PointCloudT::Ptr plane_detection_cloud (new PointCloudT);
+    copyPointCloud(*filtered_sample, *plane_detection_cloud);
 
-    ExtractIndices ei;
+    Eigen::Vector4f ground_plane_centroid;
+    pcl::PointIndices::Ptr ground_plane_indices;
 
-    seg.setInputCloud(filtered_sample);
-    seg.segment(*inliers, *coefficients);
+    ground_plane_centroid[2] = FLT_MAX;
 
-    if (inliers->indices.size () == 0)
-    {
-      PCL_ERROR("Could not estimate a planar model for the given dataset.");
-      return -1;
+    while (true) {
+      pcl::SACSegmentation<PointT> seg;
+      seg.setOptimizeCoefficients(true);
+      seg.setModelType(pcl::SACMODEL_PARALLEL_PLANE);
+      seg.setMethodType(pcl::SAC_RANSAC);
+      seg.setMaxIterations(1000);
+      seg.setDistanceThreshold(0.1);
+      seg.setAxis(Eigen::Vector3f(1,0,0));
+      seg.setEpsAngle(0.05);
+
+      seg.setInputCloud(plane_detection_cloud);
+
+      pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+      pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+      seg.segment(*inliers, *coefficients);
+
+      if (inliers->indices.size () == 0) {
+        break;
+      }
+
+      ExtractIndices ei;
+      ei.setInputCloud(plane_detection_cloud);
+      ei.setIndices(inliers);
+      ei.setNegative(true);
+
+      PointCloudT::Ptr filtered_cloud_no_ground_plane (new PointCloudT);
+      ei.filter(*filtered_cloud_no_ground_plane);
+
+      Eigen::Vector4f centroid;
+      pcl::compute3DCentroid(*filtered_sample, *inliers, centroid);
+
+      if (centroid[2] < ground_plane_centroid[2] && inliers->indices.size() > 20000) {
+        ground_plane_centroid = centroid;
+        ground_plane_indices = inliers;
+      }
+
+      plane_detection_cloud.swap(filtered_cloud_no_ground_plane);
     }
 
-    cout << "Model inliers: " << inliers->indices.size () << endl;
+    cout << "Final ground plane size: " << ground_plane_indices->indices.size() << endl;
+    cout << "Final ground plane centroid: " <<
+        ground_plane_centroid[0] << " - " <<
+        ground_plane_centroid[1] << " - " <<
+        ground_plane_centroid[2] << " - " <<
+        ground_plane_centroid[3] << endl;
 
+    ExtractIndices ei;
     ei.setInputCloud(filtered_sample);
-    ei.setIndices(inliers);
+    ei.setIndices(ground_plane_indices);
     ei.setNegative(true);
 
     PointCloudT::Ptr filtered_cloud_no_ground_plane (new PointCloudT);
@@ -288,14 +318,14 @@ int main(int argc, char** argv) {
     plane_coeff.values[2] = 0;
     plane_coeff.values[3] = -1;
 
-    viewer.addPlane(
-        plane_coeff,
-        "plane"
-        );
-    viewer.addPlane(
-        *coefficients,
-        "seg_plane"
-        );
+    //viewer.addPlane(
+    //    plane_coeff,
+    //    "plane"
+    //    );
+    //viewer.addPlane(
+    //    *coefficients,
+    //    "seg_plane"
+    //    );
     viewer.addPointCloud<PointT>(
         filtered_cloud_no_ground_plane,
         pcl::visualization::PointCloudColorHandlerRGBField<PointT>(filtered_cloud_no_ground_plane),
@@ -305,9 +335,7 @@ int main(int argc, char** argv) {
     viewer.spin();
     //////////////////////////////////////
 
-    filtered_sample.swap(filtered_cloud_no_ground_plane);
-
-    expand_faces_to_bodies(filtered_sample, faces, bodies);
+    //expand_faces_to_bodies(filtered_sample, faces, bodies);
 
     cout << "Total clusters found: " << bodies.size() << endl;
 
