@@ -292,13 +292,6 @@ int main(int argc, char** argv) {
       plane_detection_cloud.swap(filtered_cloud_no_ground_plane);
     }
 
-    cout << "Final ground plane size: " << ground_plane_indices->indices.size() << endl;
-    cout << "Final ground plane centroid: " <<
-        ground_plane_centroid[0] << " - " <<
-        ground_plane_centroid[1] << " - " <<
-        ground_plane_centroid[2] << " - " <<
-        ground_plane_centroid[3] << endl;
-
     ExtractIndices ei;
     ei.setInputCloud(filtered_sample);
     ei.setIndices(ground_plane_indices);
@@ -307,41 +300,13 @@ int main(int argc, char** argv) {
     PointCloudT::Ptr filtered_cloud_no_ground_plane (new PointCloudT);
     ei.filter(*filtered_cloud_no_ground_plane);
 
-    /////////////////////////////////////
-    pcl::visualization::PCLVisualizer viewer("PCL Viewer no ground");
-    viewer.setCameraPosition(0,0,-2,0,-1,0,0);
-
-    pcl::ModelCoefficients plane_coeff;
-    plane_coeff.values.resize(4);
-    plane_coeff.values[0] = 0;
-    plane_coeff.values[1] = 1;
-    plane_coeff.values[2] = 0;
-    plane_coeff.values[3] = -1;
-
-    //viewer.addPlane(
-    //    plane_coeff,
-    //    "plane"
-    //    );
-    //viewer.addPlane(
-    //    *coefficients,
-    //    "seg_plane"
-    //    );
-    viewer.addPointCloud<PointT>(
-        filtered_cloud_no_ground_plane,
-        pcl::visualization::PointCloudColorHandlerRGBField<PointT>(filtered_cloud_no_ground_plane),
-        "cloud_no_ground"
-        );
-
-    viewer.spin();
-    //////////////////////////////////////
-
-    //expand_faces_to_bodies(filtered_sample, faces, bodies);
+    expand_faces_to_bodies(filtered_cloud_no_ground_plane, faces, bodies);
 
     cout << "Total clusters found: " << bodies.size() << endl;
 
     for (vector<pcl::PointIndices::Ptr>::iterator body = bodies.begin(); body != bodies.end(); body++) {
       ExtractIndices ei;
-      ei.setInputCloud(filtered_sample);
+      ei.setInputCloud(filtered_cloud_no_ground_plane);
       ei.setIndices(*body);
 
       PointCloudT::Ptr body_cloud (new PointCloudT);
