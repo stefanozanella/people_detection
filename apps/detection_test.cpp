@@ -304,28 +304,26 @@ int main(int argc, char** argv) {
 
     cout << "Total clusters found: " << bodies.size() << endl;
 
-    for (vector<pcl::PointIndices::Ptr>::iterator body = bodies.begin(); body != bodies.end(); body++) {
+    pcl::visualization::PCLVisualizer viewer("PCL Viewer");
+    viewer.setCameraPosition(0,0,-2,0,-1,0,0);
+
+    for (int k = 0; k < bodies.size(); k++) {
       ExtractIndices ei;
       ei.setInputCloud(filtered_cloud_no_ground_plane);
-      ei.setIndices(*body);
+      ei.setIndices(bodies.at(k));
 
       PointCloudT::Ptr body_cloud (new PointCloudT);
       ei.filter(*body_cloud);
 
-
-      /////////////////////////////////////
-      pcl::visualization::PCLVisualizer viewer("PCL Viewer");
-      viewer.setCameraPosition(0,0,-2,0,-1,0,0);
-
       viewer.addPointCloud<PointT>(
           body_cloud,
           pcl::visualization::PointCloudColorHandlerRGBField<PointT>(body_cloud),
-          "body"
+          "body"+boost::to_string(k)
           );
 
-      viewer.spin();
-      //////////////////////////////////////
     }
+
+    viewer.spin();
     //show_faces(sample_cloud, faces);
   }
 
