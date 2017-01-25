@@ -106,7 +106,12 @@ of 3 types:
 
 [[figure 1 from viola jones]]
 
-!! calculating features in 3d cloud, constraints (i.e. cloud must be organized)
+In order to make the implementation presented in this paper as close as possible
+to the original algorithm described by Viola and Jones, features have been
+calculated based only on the 2D RGB information of the point cloud. This makes
+features calculation very fast and easy to reasonate about as the problem can be
+modeled with simple two-dimensional array access. This means the point cloud
+passed as input to the detector must be organized.
 
 ### Cascaded classifier
 
@@ -143,7 +148,42 @@ as illustrated in the picture above. Computing any of the features described in
 the previous paragraph also requires a constant number of operations,
 independent from the size of the feature.
 
-!! storing the integral image !!
+In practical terms, in order to perform all the required operations on an image
+efficiently, we need to store both the integral image and the integral image of
+the squares, that is the matrix in which each cell contains the square sum of
+the cells above and to the left. This is needed in order to calculate the image
+variance with O(1) complexity.
+
+Another interesting aspect of the implementation of the integral image is the
+different kind of access to it performed by the training algorithm and the
+detection algorithm.
+For the training algorithm all that's needed is to have an integral image over
+the overall sample. A specific feature is calculated only once on the overall
+sample. On the contrary, the detection algorithm needs to calculate features
+multiple times across the same image. More importantly, image normalization must
+happen on the overall sample in case of the training algorithm, whereas in the
+detector each of the image portions scanned needs to be normalized independently
+from the rest of the image.
+These two characteristics pose two problems: how to share the code that
+calculates the integral image between the two use cases, and how to make image
+normalization as efficient as possible.
+
+The first problem has been solved by collecting the integral image and square
+integral image calculation code in a common class named `IntegralImage`. This
+class provides facilities to get various calculations for a specific rectangle
+of the image held by a class' instance, such as the area sum, mean and variance.
+Taking it from there, then, in order to solve the second problem two classes
+have been designed: `TrainingSample` and `SubWindow`. A training sample maps the
+use case scenario found in training, which boils down to simple area sum
+calculation using the whole integral image. A training sample also stores
+information useful for the training itself, as for example a flag saying if the
+sample contains a face or not (i.e. if it should be classified positively or
+not). A sub-window, instead, maps the use case found in the detector. The main
+feature is the possibility to calculate a feature on a portion of the image that
+gets normalized independently from the rest of the image.
+
+!! explain how subwindow normalization works and how we can efficiently move the
+subwindow around !!
 
 ### Sizing the features
 
