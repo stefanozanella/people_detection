@@ -32,17 +32,18 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *
- * Authors : Sergey Ushakov
- *           Stefano Zanella
- * Emails  : mine_all_mine@bk.ru
- *           zanella.stefano@gmail.com
+ * Author : Sergey Ushakov
+ * Email  : mine_all_mine@bk.ru
  *
  */
 
 #include <pcl/point_types.h>
 #include <pcl/impl/instantiate.hpp>
-#include "pcl/segmentation/single_seed_region_growing.h"
-#include "pcl/segmentation/impl/single_seed_region_growing.hpp"
+#include "pcl/segmentation/single_seed_region_growing_rgb.h"
+#include "pcl/segmentation/impl/single_seed_region_growing_rgb.hpp"
 
 // Instantiations of specific point types
-PCL_INSTANTIATE(SingleSeedRegionGrowing, PCL_XYZ_POINT_TYPES)
+template class pcl::SingleSeedRegionGrowingRGB<pcl::PointXYZRGBA>;
+template class pcl::SingleSeedRegionGrowingRGB<pcl::PointXYZRGB>;
+template class pcl::SingleSeedRegionGrowingRGB<pcl::PointXYZRGBL>;
+template class pcl::SingleSeedRegionGrowingRGB<pcl::PointXYZRGBNormal>;
