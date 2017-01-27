@@ -41,7 +41,7 @@ Building a detector flexible enough to recognize any body part (e.g. a face or a
 hand), or any sensible combination of them (e.g. a leg and a foot), is a task
 that has low chances to lead to good performances. Indeed, also designing a
 detector that recognizes bodies in multiple poses is not a simple task, as the
-flexibility of human body makes the number of possible poses very high.
+flexibility of human body makes the number of possible poses very high. \\
 Moreover, such a detector might not perform well in case of obstructed bodies or
 bodies only partially framed into the scene.
 
@@ -49,45 +49,49 @@ Therefore, the proposed approach starts from the most distinguishing part of
 a human body: its head. A human head, put in the context of a larger scene,
 provides some desirable features:
 
-* it's relatively rigid, meaning that it acts approximately as any other rigid
+\begin{itemize}
+  \item it's relatively rigid, meaning that it acts approximately as any other rigid
   body that can only be subject to rotation. This is important as it allows to
-  be detected by using standard object recognition techniques.
-
-* it's small compared to the rest of the body, opening the door to algorithms
+  be detected by using standard object recognition techniques
+  \item it's small compared to the rest of the body, opening the door to algorithms
   that achieve higher performances than those than need to perform larger scans
-  of a scene or analyze larger sets of points at a single time.
-
-* it's possibly the body part that's most discriminative of human nature: e.g.
+  of a scene or analyze larger sets of points at a single time
+  \item it's possibly the body part that's most discriminative of human nature: e.g.
   it might be hard, at a relative distance, to say if a barefoot belongs to a
-  dummy; on the other hand, it's definitely easier if a frontal head it's human
-  or not. This might be of help to recognition algorithms.
+  dummy; on the other hand, it's definitely easier to discriminate if a frontal
+  head it's human or not. This might be of help to recognition algorithms.
+\end{itemize}
 
 The subsequent reasoning step is that, given an accurate way of detecting a
-human head in a scene, we can extend the detection to points that seems to
+human head in a scene, we can extend the detection to points that seem to
 belong to the same object as the head. This is a task that segmentation
 algorithms can solve pretty well, with a good range of choices in terms of
 speed, accuracy and performances.
 
-This sort of "detection expansion" technique offers a few advantages:
+This "detection expansion" technique offers a few advantages:
 
-* it allows to detect bodies that are partially obstructed or not entirely in
+\begin{itemize}
+  \item it allows to detect bodies that are partially obstructed or not entirely in
   the scene
-* it makes the algorithm robust to changes of pose, given the segmentation
-  algorithm can correctly identify "compact" objects (i.e. clusters of point
+  \item it makes the algorithm robust to changes of pose, given the segmentation
+  algorithm can correctly identify "compact" objects (i.e. clusters of points
   that are mostly equidistant from each other).
-* if decomposes a "hard" problem into two problems that has been alredy well
+  \item if decomposes a "hard" problem into two problems that have been already well
   treated in literature, and for which a number of efficient solutions exist.
+\end{itemize}
 
 As a matter of implementation, two well-known algorithms have been selected:
 
-* for head (face) detection, the algorithm devised by Viola and Jones (Viola and
+\begin{itemize}
+  \item for head (face) detection, the algorithm devised by Viola and Jones (Viola and
   Jones 2003) has been selected and implemented with a number of adaptations and
-  improvements made possible by its application in the 3D space.
-* for the body detection, a variant of the region-growing segmentation algorithm
+  improvements made possible by its application in the 3D space
+  \item for body detection, a variant of the region-growing segmentation algorithm
   present in the PCL library has been used
+\end{itemize}
 
 \subsection*{Overview}
-The remaining of this paper will describe more in detail the face detection
+The remaining of this paper will describe more in detail the people detection
 algorithm implementation and its peculiarities. We will start by describing the
 face detection algorithm and all the specific changes that have been introduced
 for it to be applicable to the 3D space. After that the text will focus on the
@@ -96,12 +100,12 @@ on a validation set of 40 images will be discussed. A selection of ideas for
 future improvements closes the paper.
 
 \section{Face detection}
-The first step in the processing chain is to detect faces in the current scene.
+The first step in the processing chain is to detect faces in the current scene.  \\
 This is done by employing a boosted cascade detector that takes heavy
-inspiration from the work presented by Viola and Jones in their seminal paper.
+inspiration from the work presented by Viola and Jones in their seminal paper.  \\
 The detector is composed of a set of rectangular features that get evaluated on
 the area currently analyzed, then combining the results in a linear combination
-and evaluating the final result against a threshold.
+and evaluating the final result against a threshold. \\
 Each linear combination of features represents a stage in the final detector: if
 an area is recognized as a face in a given stage, the algorithm moves to the
 next stage. The algorithm terminates when a stage rejects a sample, or when all
@@ -113,16 +117,23 @@ general terms, a feature defines a linear combination that reduces the value of
 the pixels in the sample to a single number. More specifically, features can be
 of 3 types:
 
-* two-rectangle features: they are defined as the difference between the sum of
+\begin{itemize}
+  \item two-rectangle features: they are defined as the difference between the sum of
   the pixels in two rectangular areas. The areas have same size, same shape and
   are horizontally or vertically adjacent
-* three-rectangle features: in this case what gets computed is the sum of two
+  \item three-rectangle features: in this case what gets computed is the sum of two
   outside rectangles, subtracted from the sum of an inner rectangle of same
   shape and size as the other two
-* four-rectangle features: the rectangles are positioned in a grid and the
+  \item four-rectangle features: the rectangles are positioned in a grid and the
   features computes the difference between the sum of diagonal pairs
+\end{itemize}
 
-[[figure 1 from viola jones]]
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=1]{features.jpg}
+  \caption{Examples of features relative to the detection window}
+  \label{fig:features}
+\end{figure}
 
 In order to make the implementation presented in this paper as close as possible
 to the original algorithm described by Viola and Jones, features have been
@@ -134,13 +145,22 @@ passed as input to the detector must be organized.
 \subsection{Cascaded classifier}
 Evaluation of a single feature is hardly sufficient to obtain a result that can
 be distinguished by a random classifier operating over a uniform probability
-distribution. Such a classifier is termed for this reason _weak classifier_.
+distribution. A classifier operating with a single feature is termed for this
+reason \emph{weak classifier}.
 
-!! equation describing a weak classifier !!
+Given a detection window $x$, a feature $f$, a threshold $\theta$ and a polarity
+$p$, a weak classifier can be described by the equation:
+
+\[ 
+  h(x,f,p,\theta) = 
+\begin{cases}
+  1,& \text{if } pf(x)\lt p\theta \\ 0,& \text{otherwise}
+\end{cases}
+\]
 
 To obtain more robust results, weak classifiers can be combined together by
 building a linear combination of them. Such a combination is referred to as
-_strong classifier_. By means of a strong classifier it's possible to obtain
+\emph{strong classifier}. By means of a strong classifier it's possible to obtain
 results that are satisfactory in terms of detection rate and false positive
 rate, but at the expense of an increased need for computational power.
 
