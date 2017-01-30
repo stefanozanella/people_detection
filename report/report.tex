@@ -154,13 +154,13 @@ $p$, a weak classifier can be described by the equation:
 \[ 
   h(x,f,p,\theta) = 
 \begin{cases}
-  1,& \text{if } pf(x)\lt p\theta \\ 0,& \text{otherwise}
+  1,& \text{if } pf(x) < p\theta \\ 0,& \text{otherwise}
 \end{cases}
 \]
 
-To obtain more robust results, weak classifiers can be combined together by
-building a linear combination of them. Such a combination is referred to as
-\emph{strong classifier}. By means of a strong classifier it's possible to obtain
+To obtain more robust results, weak classifiers can be combined together in a
+linear combination. Such a combination is referred to as \emph{strong
+classifier}. By means of a strong classifier it's possible to obtain
 results that are satisfactory in terms of detection rate and false positive
 rate, but at the expense of an increased need for computational power.
 
@@ -177,7 +177,13 @@ integral image representation of the original sample is computed.
 In an integral image, each pixel is the sum of all the pixels above and to the
 left.
 
-[[ figure 3 from viola jones ]]
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=1]{area_sum_integral_image.jpg}
+  \caption{The sum of the pixels within rectangle D can be computed with four
+  array references: $4+1-2-3$}
+  \label{fig:area_sum}
+\end{figure}
 
 Using this representation, the value of a rectangle area can be computed by 4
 array references as illustrated in the picture above. Computing any of the
@@ -188,7 +194,7 @@ In practical terms, in order to perform all the required operations on an image
 efficiently, we need to store both the integral image and the integral image of
 the squares, that is the matrix in which each cell contains the square sum of
 the cells above and to the left. This is needed in order to calculate the image
-variance with O(1) complexity.
+variance with $O(1)$ complexity.
 
 Another interesting aspect of the implementation of the integral image is the
 different way it is accessed by the training algorithm and the detection
@@ -198,60 +204,61 @@ overall sample. On the contrary, the detection algorithm needs to calculate
 features multiple times across the same image. More importantly, image
 normalization must happen on the overall sample in case of the training
 algorithm, whereas in the detector each of the image portions scanned needs to
-be normalized independently from the rest.
+be normalized independently from the rest. \\
 These two characteristics pose two problems: how to share the code that
 calculates the integral image between the two use cases, and how to make image
 normalization as efficient as possible.
 
 The first problem has been solved by collecting the integral image and square
-integral image calculation code in a common class named `IntegralImage`. This
-class provides facilities to get various calculations for a specific rectangle
-of the image held by a class' instance, such as the area sum, mean and variance.
-Taking it from there, then, in order to solve the second problem two classes
-have been designed: `TrainingSample` and `SubWindow`. A training sample maps the
-use case scenario found in training, which boils down to simple area sum
-calculation using the whole integral image. A training sample also stores
-information useful for the training itself, as for example a flag saying if the
-sample contains a face or not (i.e. if it should be classified positively or
-not). A sub-window, instead, maps the use case found in the detector. The main
-feature is the possibility to calculate a feature on a portion of the image that
-gets normalized independently from the rest of the image.
+integral image calculation code in a common class named \texttt{IntegralImage}.
+This class provides facilities to get various calculations for a specific
+rectangle of the image held by a class' instance, such as the area sum, mean and
+variance.  Taking it from there, then, in order to solve the second problem two
+classes have been designed: \texttt{TrainingSample} and \texttt{SubWindow}. A
+training sample maps the use case scenario found in training, which boils down
+to simple area sum calculation using the whole integral image. A training sample
+also stores information useful for the training itself, as for example a flag
+saying if the sample contains a face or not (i.e. if it should be classified
+positively or not). A sub-window, instead, maps the use case found in the
+detector. The main feature is the possibility to calculate a feature on a
+portion of the image that gets normalized independently from the rest of the
+image.
 
 Image normalization is required to make training and detection as independent as
 possible from lighting conditions and general camera exposure. A form of
 normalization useful in this case is variance normalization. This transforms the
-input so that the end result has a N(0,1) distribution.
-Given a pixel value `x` belonging to an image `X`, its variance-normalized
+input so that the end result has a $N(0,1)$ distribution.
+Given a pixel value $x$ belonging to an image $X$, its variance-normalized
 counterpart can be expressed as:
 
-`x_norm = (x - x_mean)/s^2`
+\[ x_{norm} = \dfrac{x \overline{x}}{\sigma^{2}} \]
 
-where `x_mean` is the image's mean value, defined as:
+where $\overline{x}$ is the image's mean value, defined as:
 
-`x_mean = 1/N * sum(X)`
+\[ \overline{x} = \dfrac{1}{N} \sum X \]
 
-whereas `s^2` is the square variance, defined as:
+whereas $\sigma^{2}$ is the square variance, defined as:
 
-`s^2 = m^2 - 1/N sum(X^2)`
+\[ \sigma^{2} = \overline{x}^{2} - \dfrac{1}{2} \sum X^{2} \]
 
 We can then calculate the linear combination of a set of variance-normalized
 pixels by relying on the following equation:
 
-`sum(X_norm) = sum(X) / s^2`
+\[ \sum X_{norm} = \dfrac{\sum X}{\sigma^{2}} \]
 
 We need then to solve the problem of how to efficiently calculate the value of a
 feature normalized over a portion of the overall image. We do this by allowing a
-`SubWindow` to be repositioned inside the original image. When repositioning the
-sub-window, we recalculate the variance over the new image portion. This is a
-step that requires O(1) since the integral square image is stored alongside with
-the integral image. At this point we can simply apply the last equation whenever
-we calculate an area sum.
+\texttt{SubWindow} to be repositioned inside the original image. When
+repositioning the sub-window, we recalculate the variance over the new image
+portion. This is a step that requires $O(1)$ since the integral square image is
+stored alongside with the integral image. At this point we can simply apply the
+last equation whenever we calculate an area sum.
 
-To make things easier, an instance of `SubWindow` stores the coordinates of the
-image portion being analyzed (in the form of its top-left and bottom-right
-corner). When repositioning the sub-window, we also recalculate and store the
-variance of the image portion. By repositioning the sub-window instead of the
-feature itself, we can achieve a consistent and position-independent
+To make things easier, an instance of \texttt{SubWindow} stores the coordinates
+of the image portion being analyzed (in the form of its top-left and
+bottom-right corner). When repositioning the sub-window, we also recalculate and
+store the variance of the image portion. By repositioning the sub-window instead
+of the feature itself, we can achieve a consistent and position-independent
 representation of a feature (i.e. the sub-window takes care of translating and
 scaling the feature's coordinates).
 
@@ -260,17 +267,17 @@ The original implementation of the Viola-Jones algorithm is designed to work on
 2D images. This mean it doesn't accept any depth information. For this reason,
 in the original papepr, the final detector needs to be run at different scales
 in each area in order to take into account the fact that faces might be present
-in different sizes.
+in different sizes. \\
 In addition to that, a training algorithm has to focus on limited areas of a
-specific scene. We'll call these areas _samples_. The size of these sample is
-also affected by the distance, and bears a direct linear relationship to the
+specific scene. We'll call these areas \emph{samples}. The size of these samples
+is also affected by the distance, and bears a direct linear relationship to the
 size of the features. Determination of the size of a sample obeys the same rules
 as the determination of a feature's size.
 
 This extra computational step can be avoided if we consider depth information
 present in a point cloud. In particular we can start from a reference sample
 size, and then scale it based on the position on the Z-axis of the area of the
-scene currently analyzed.
+scene currently analyzed. \\
 The reference sample should be big enough to guarantee it fits heads of any
 size, but not any bigger. In other words, the reference sample should be as
 small as possible without running into the risk of "cutting off" heads that
@@ -282,7 +289,7 @@ by dividing the reference size by the sample distance.
 
 In practical terms, this poses two problems: the fact that the calculation
 happens on pixels and not of real values, and that the depth is not constant
-over a specific area.
+over a specific area. \\
 The first problem is simply solved by rounding up the division to the next
 integer. Moreover, since once the sample size has been calculated we need to
 calculate the precise pixel coordinates of the rectangle to consider, we take
@@ -300,7 +307,7 @@ encounter an outlier (either a NaN or a point with a lot of noise in the
 distance information), we can just assume that at least one of its neighbors
 contains correct information. In other words, in case we encounter outliers, we
 can safely assume that the algorithm already classified or will classify the
-area correctly when analyzing neighbor points.
+area correctly when analyzing neighbor points. \\
 The only downside of this approach is that in case of area that are overall
 noisy (such as peripheral areas in the camera's field of view) the algorithm
 might end up skipping classification on large portions of the image. But in that
@@ -333,12 +340,14 @@ amount of features to those that fit the smallest sample present in the scene.
 Features for bigger samples can be upscaled from the smaller ones. This approach
 offer two contrasting aspects:
 
-* on one side, resolution is lost when upscaling the features (the bigger the
+\begin{itemize}
+  \item on one side, resolution is lost when upscaling the features (the bigger the
   size differences among samples, the bigger the loss)
-* on the other side, starting from a set of features for a bigger sample, opens
+  \item on the other side, starting from a set of features for a bigger sample, opens
   the door to the risk of downscaling a feature to the point it goes to a
   sub-pixel level, resulting in a complete loss of informaton during the training
   process.
+\end{itemize}
 
 Trials on the designed algorithm showed that the problem introduced by
 downsampling features to sub-pixel sizes was jeopardizing the algorithm's
