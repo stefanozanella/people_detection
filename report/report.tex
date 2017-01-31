@@ -1,4 +1,4 @@
-\documentclass[a4paper,12pt,titlepage]{article}
+\documentclass[a4paper,11pt,titlepage]{article}
 
 \usepackage{listings}
 \usepackage{amsmath}
@@ -9,6 +9,7 @@
 \usepackage{parskip}
 
 \setlength{\parindent}{15pt}
+\setlength{\emergencystretch}{3em}
 
 \begin{document}
 
@@ -130,7 +131,7 @@ of 3 types:
 
 \begin{figure}[h]
   \centering
-  \includegraphics[scale=1]{features.jpg}
+  \includegraphics[scale=0.5]{features.jpg}
   \caption{Examples of features relative to the detection window}
   \label{fig:features}
 \end{figure}
@@ -179,7 +180,7 @@ left.
 
 \begin{figure}[h]
   \centering
-  \includegraphics[scale=1]{area_sum_integral_image.jpg}
+  \includegraphics[scale=0.5]{area_sum_integral_image.jpg}
   \caption{The sum of the pixels within rectangle D can be computed with four
   array references: $4+1-2-3$}
   \label{fig:area_sum}
@@ -231,7 +232,7 @@ input so that the end result has a $N(0,1)$ distribution.
 Given a pixel value $x$ belonging to an image $X$, its variance-normalized
 counterpart can be expressed as:
 
-\[ x_{norm} = \dfrac{x \overline{x}}{\sigma^{2}} \]
+\[ x_{norm} = \dfrac{x - \overline{x}}{\sigma^{2}} \]
 
 where $\overline{x}$ is the image's mean value, defined as:
 
@@ -373,3 +374,5 @@ detector
   a restricted range of color variations)
 * adaptation of the algorithm to take advantage of moving targets (i.e.
   implementation of a companion tracking algorithm)
+
+\end{document}
