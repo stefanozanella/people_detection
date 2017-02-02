@@ -146,7 +146,7 @@ passed as input to the detector must be organized.
 \subsection{Cascaded classifier}
 Evaluation of a single feature is hardly sufficient to obtain a result that can
 be distinguished by a random classifier operating over a uniform probability
-distribution. A classifier operating with a single feature is termed for this
+distribution. A classifier operating with a single feature is named for this
 reason \emph{weak classifier}.
 
 Given a detection window $x$, a feature $f$, a threshold $\theta$ and a polarity
@@ -165,11 +165,115 @@ classifier}. By means of a strong classifier it's possible to obtain
 results that are satisfactory in terms of detection rate and false positive
 rate, but at the expense of an increased need for computational power.
 
-!! expand on strong classifier, put equation describing a strong classifier !!
+The general equation of a strong classifier composed of $T$ weak classifiers is
+defined as follows:
 
-To balance these two needs, a variant of the AdaBoost algorithm is introduced.
+\[
+  C(X) =
+  \begin{cases}
+    1& \sum_{t=1}^{T} \log \dfrac{1-\epsilon_{t}}{\epsilon_{t}} h_{t}(X) \geq
+    \dfrac{1}{2} \sum_{t=1}^{T} \log \dfrac{1-\epsilon_{t}}{\epsilon_{t}} \\
+    0& \text{otherwise}
+  \end{cases}
+\]
 
-!! explain adaboost principles !!
+where
+
+\begin{itemize}
+  \item $h_{n}(X)$ is the $n$th weak classifier, defined as above
+  \item $\epsilon_{n}$ is the weighted error for the $n$th classifier,
+    calculated as part of the training process
+\end{itemize}
+
+The training process for a strong classifier starts from a set of training
+images $(x_{i}, y_{i})$ pre-classified as positive ($y_{i} = 1$) or negative
+($y_{i} = 0$), and proceeds as follows:
+
+\begin{itemize}
+  \item initialize weights $w_{1,i} = \frac{1}{2m}, \frac{1}{2l}$ for $y_{i} =
+    0,1$ respectively, where $m$ and $l$ are the number of negative and positive
+    samples
+  \item while the false positive rate is above the target level:
+    \begin{itemize}
+      \item normalize the weights 
+        \[
+          w_{t,i} \leftarrow \dfrac{w_{t,i}}{\sum_{j=1}^{n} w_{t,j}}
+        \]
+      \item select the best weak classifier with respect to the weighted error
+        \[
+          \epsilon_{t} = min_{f,p,\theta} \sum_{i} w_{i} \left|h(x_{i},f, p,
+          \theta) - y_{i}\right|
+        \]
+      \item define
+        \[
+          h_{t}(x) = h(x, f_{t}, p_{t}, \theta_{t})
+        \]
+        where $f{t}, p_{t}, \theta_{t}$ are the minimizers of $\epsilon_{t}$
+      \item update the weights
+        \[
+          w_{t+1,i} = w_{t,i}\left(\dfrac{\epsilon_{t}}{1-\epsilon_{t}}\right)^{1-e_{i}}
+        \]
+        where $e_{i} = 0$ if example $X_{i}$ is classified correctly, $1$
+        otherwise
+    \end{itemize}
+\end{itemize}
+
+This approach would already allow to build a strong classifier that performs
+much better than a single weak classifier, but increasing the performance of the
+classifier directly impacts computation time.
+
+This can be improved by leveraging a simple idea: in most cases, a detector is
+going to reject a sample (i.e. there aren't that many faces in a scene compared
+to the overall number of possible samples). So a simple classifier could already
+be useful in reducing the number of samples that need to be checked by a more
+complex (and thus refined) classifier. \\
+This approach is achieved by implementing a variant of AdaBoost [TODO INSERT
+REFERENCE HERE] that connect a series of strong classifiers of varying
+complexity in a chain. Ideally the detectors should have high detection rate and
+acceptable false positive rate. That given, the cascade works as follows: if a
+sample is rejected in a stage of the cascade, it won't be processed by later
+stages. A sample is declared positive only if all the stages classify it so.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.5]{cascade_classifier.jpg}
+  \caption{Schematic depiction of a cascade classifier}
+  \label{fig:cascade_classifier}
+\end{figure}
+
+If we sort the classifiers in order of complexity we would greatly reduce the
+average computational power required to classify a sample. Only the actual faces
+will require to go through the whole cascade, but the vast majority of the
+samples will be rejected early.
+
+The training algorithm for a cascade classifier builds on top of the one for
+training a strong classifier. It starts from a fixed target for the maximum
+acceptable false positive rate $f$, the overall target false positive rate
+$F_{target}$ and for the minimum acceptable detection rate $d$, and proceeds as
+follows:
+
+\begin{itemize}
+  \item $F_{0} = 1.0, D_{0} = 1.0$
+  \item i = 0
+  \item while $F_{i} > F_{target}$
+    \begin{itemize}
+      \item $i++$
+      \item create a new stage in the classifier with a strong classifier
+      \item while $F_{i} > f \cdot F_{i-1}$
+        \begin{itemize}
+          \item train a new weak classifier to add to the last strong classifier
+          \item evaluate current cascaded classifier on a validation set to
+            determine $F_{i}$ and $D_{i}$
+          \item while $D_{i} < d$
+            \begin{itemize}
+              \item decrease threshold of the last trained weak classifier
+            \end{itemize}
+        \end{itemize}
+      \item if $F_{i} > F_{target}$ evaluate current cascaded classifier on set
+        of non-face images and replace the current negative set used for
+        training with images that are wrongly detected
+    \end{itemize}
+\end{itemize}
 
 \subsection{Integral image}
 For efficient computation of features (both in detection and training), an
