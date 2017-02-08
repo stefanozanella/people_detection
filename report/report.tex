@@ -11,6 +11,8 @@
 \setlength{\parindent}{15pt}
 \setlength{\emergencystretch}{3em}
 
+\hypersetup{urlcolor=cyan}
+
 \begin{document}
 
 \title{Multi-pose people detection in 3D point clouds}
@@ -21,13 +23,13 @@
 
 \section{Abstract}
 This paper describes a people detection algorithm for three-dimensional point
-clouds based on the well-known Viola-Jones face recognition algorithm (Viola and
-Jones, 2003). The key contribution of the project is an implementation of
+clouds based on the well-known Viola-Jones face recognition algorithm
+\cite{violajones}. The key contribution of the project is an implementation of
 mentioned algorithm, adapted for work with 3D point clouds. The implementation
 consists in a cascaded classifier and its training algorithm. This detector
 serves as a cornerstone for the overall people detection algorithm, which
-features a variant of the region-growing segmentation algorithm found in the PCL
-library. Analysis of the algorithm's performance are provided based on a
+features a variant of the region-growing segmentation algorithm found in the
+PCL library. Analysis of the algorithm's performance are provided based on a
 given set of 40 images.
 
 \newpage
@@ -52,15 +54,15 @@ provides some desirable features:
 
 \begin{itemize}
   \item it's relatively rigid, meaning that it acts approximately as any other rigid
-  body that can only be subject to rotation. This is important as it allows to
-  be detected by using standard object recognition techniques
+    body that can only be subject to rotation. This is important as it allows to
+    be detected by using standard object recognition techniques
   \item it's small compared to the rest of the body, opening the door to algorithms
-  that achieve higher performances than those than need to perform larger scans
-  of a scene or analyze larger sets of points at a single time
+    that achieve higher performances than those than need to perform larger scans
+    of a scene or analyze larger sets of points at a single time
   \item it's possibly the body part that's most discriminative of human nature: e.g.
-  it might be hard, at a relative distance, to say if a barefoot belongs to a
-  dummy; on the other hand, it's definitely easier to discriminate if a frontal
-  head it's human or not. This might be of help to recognition algorithms.
+    it might be hard, at a relative distance, to say if a barefoot belongs to a
+    dummy; on the other hand, it's definitely easier to discriminate if a frontal
+    head it's human or not. This might be of help to recognition algorithms.
 \end{itemize}
 
 The subsequent reasoning step is that, given an accurate way of detecting a
@@ -73,22 +75,22 @@ This "detection expansion" technique offers a few advantages:
 
 \begin{itemize}
   \item it allows to detect bodies that are partially obstructed or not entirely in
-  the scene
+    the scene
   \item it makes the algorithm robust to changes of pose, given the segmentation
-  algorithm can correctly identify "compact" objects (i.e. clusters of points
-  that are mostly equidistant from each other).
+    algorithm can correctly identify "compact" objects (i.e. clusters of points
+    that are mostly equidistant from each other).
   \item if decomposes a "hard" problem into two problems that have been already well
-  treated in literature, and for which a number of efficient solutions exist.
+    treated in literature, and for which a number of efficient solutions exist.
 \end{itemize}
 
 As a matter of implementation, two well-known algorithms have been selected:
 
 \begin{itemize}
-  \item for head (face) detection, the algorithm devised by Viola and Jones (Viola and
-  Jones 2003) has been selected and implemented with a number of adaptations and
-  improvements made possible by its application in the 3D space
+  \item for head (face) detection, the algorithm devised by Viola and Jones
+    \cite{violajones} has been selected and implemented with a number of
+    adaptations and improvements made possible by its application in the 3D space
   \item for body detection, a variant of the region-growing segmentation algorithm
-  present in the PCL library has been used
+    present in the PCL library has been used
 \end{itemize}
 
 \subsection*{Overview}
@@ -227,12 +229,12 @@ going to reject a sample (i.e. there aren't that many faces in a scene compared
 to the overall number of possible samples). So a simple classifier could already
 be useful in reducing the number of samples that need to be checked by a more
 complex (and thus refined) classifier. \\
-This approach is achieved by implementing a variant of AdaBoost [TODO INSERT
-REFERENCE HERE] that connect a series of strong classifiers of varying
-complexity in a chain. Ideally the detectors should have high detection rate and
-acceptable false positive rate. That given, the cascade works as follows: if a
-sample is rejected in a stage of the cascade, it won't be processed by later
-stages. A sample is declared positive only if all the stages classify it so.
+This approach is achieved by implementing a variant of AdaBoost \cite{adaboost}
+that connect a series of strong classifiers of varying complexity in a chain.
+Ideally the detectors should have high detection rate and acceptable false
+positive rate. That given, the cascade works as follows: if a sample is
+rejected in a stage of the cascade, it won't be processed by later stages. A
+sample is declared positive only if all the stages classify it so.
 
 \begin{figure}[h]
   \centering
@@ -461,22 +463,111 @@ effectiveness, so the first option was selected.
 \section{Body segmentation}
 
 \section{Implementation details}
-tool to extract faces
-training application
-detector
+The effort to realize the algorithm described so far resulted in the
+implementation of a number of different applications that support the main
+algorithm. In particular, in the accompanying codebase the source code of the
+following programs can be found:
 
+\begin{itemize}
+  \item a tool to extract faces from a scene. The tool provides a graphical user
+    interface that allows the user to move around a square viewport centered
+    around the selected point. A point can be selected with \texttt{Shift +
+    Click}. The position of the viewport can be adjusted using the arrow keys.
+    Pressing \texttt{S} saves the sample to a separate file. The program accepts
+    as input a folder whenre to read the scenes from, and one where to save the
+    samples to. An example invocation is as follows:
+
+    \begin{verbatim}
+    [TODO] Add extract_faces invocation example
+    \end{verbatim}
+
+  \item an application that trains a cascaded face detector given a set of
+    positive samples and a scene containing only negative samples. The
+    application uses the training procedure described in the preceding
+    paragraphs. The output of the training is a YAML file containing the
+    parameters that can be used to initialize a trained detector. The
+    application can be invoked as follows:
+
+    \begin{verbatim}
+    [TODO] Add train invocation example
+    \end{verbatim}
+
+  \item a sample application that scans a set of scenes for people.
+    TODO Add information about the graphical output once decided
+
+    \begin{verbatim}
+    [TODO] Add invocation example
+    \end{verbatim}
+\end{itemize}
+
+In addition to this, the codebase contains a set of utilities to facilitate
+compilation and execution of the applications in a number of different
+environments. Namely:
+
+\begin{itemize}
+  \item a \texttt{CMakeLists.txt} file used by CMake to compile all the
+    applications described above
+  \item a \texttt{Makefile} which provides shortcuts for running the
+    applications described above in a virtual environment
+  \item a \texttt{Vagrantfile} configuration file and a \texttt{provisioning}
+    folder. These are used to set up a Vagrant virtual machine capable of
+    compiling and running the applications. Tasks invoked from the
+    \texttt{Makefile} automatically bring up the virtual machine if not already
+    live
+\end{itemize}
+
+The source code of the project is freely available
+\href{https://github.com/stefanozanella/people_detection}{on GitHub}.
 
 \section{Results}
 
 \section{Further developments}
-* better algorithm training to remove the need of additional processing
-* different measurements can be used to calculate features (e.g. face depth map)
-* parallelization of feature values calculation for even faster implementation
-* combination of multiple, parallel detectors to improve detection performance
-  and allow a wider range of poses to be identified (e.g. profile detector)
-* use of color information to improve detection performance (human skin lies in
-  a restricted range of color variations)
-* adaptation of the algorithm to take advantage of moving targets (i.e.
-  implementation of a companion tracking algorithm)
+The results observed by developing the present paper has been useful not only to
+validate the proposed approach, but also as inspiration for possible
+improvements of the base technique.
+
+An obvious improvement, achievable with what built already in this paper, is
+training the detector with more samples, and possibly a more diverse set. A
+fundamental principle of machine learning is that the more data is used for
+training, the better the results. Also, to make the algorithm suitable for a
+real-world case it's indispensible for it to be generic enough not to require
+training every time a scene changes. Using a more diverse set of samples (e.g.
+different scenes, different subject) would definitely be of great help.
+
+Talking strictly about improvements over the algorithm itself instead, one first
+idea is to experiment with different information when calculating features. For
+example, information about a pixel's intensity could be substituted with its
+depth information. The latter might prove to be a more robust information
+channel rather than the former, since intensity needs normalization to account
+for varying lighting conditions.
+
+Another possible improvement is based on the observation above, and consists in
+running multiple detectors in parallel and process the results with a consensus
+algorithm. The different detectors can be of the same type, trained to detect
+different poses (e.g. to identify profile faces rather than frontal positions);
+or they could be of different types, supporting each other in case of difficult
+detection (e.g. an intensity-based detector running in parallel with a
+depth-based one, to compensate sensor's limitation in specific areas).
+
+Another aspect that in this paper hasn't been considered is that of
+parallelization. On a high level a cascaded detector isn't particularly suited
+for a parallel implementation, but each stage could benefit from that. Since a
+strong classifier requires computing a certain number of independent features
+over the same scene, it's easy to imagine that calculating the feature values in
+parallel would speed up the algorithm's overall performance.
+
+A possible improvement might also lie in the use of color information: for
+example, human skin lies within a specific and restricted range of colors. This
+fact could be used to speed up removing negatives, so that the final cascaded
+detector can be trained on more specific cases (incrementing its overall
+complexity but at the same time making it more refined and precise).
+
+Finally, one aspect that here hasn't been considered is the use of the algorithm
+in a sequence of frames. It's easy to imagine how information from a
+previously observed scene could help taking better decisions in subsequent
+frames through subject tracking.
+
+\bibliographystyle{plain}
+\bibliography{report}
 
 \end{document}
