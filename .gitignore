@@ -4,3 +4,9 @@
 build
 bin
 dataset
+*.aux
+*.bbl
+*.blg
+*.dvi
+*.log
+*.out
