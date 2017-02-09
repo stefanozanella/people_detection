@@ -5,16 +5,13 @@ all: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_build"
 
 run: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_run app=people_detector in=/vagrant/$(in)"
-
-test: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_run app=detection_test in=/vagrant/$(in)"
+	vagrant ssh -c "cd /vagrant && make local_run app=detection_test args='/vagrant/$(in)'"
 
 train: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_run app=train in=/vagrant/$(in) out=/vagrant/$(out)"
+	vagrant ssh -c "cd /vagrant && make local_run app=train args='/vagrant/$(positive_set) /vagrant/$(negative_sample)'"
 
 extract_samples: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_run app=extract_samples in=/vagrant/$(in) out=/vagrant/$(out)"
+	vagrant ssh -c "cd /vagrant && make local_run app=extract_samples args='/vagrant/$(in) /vagrant/$(out)'"
 
 clean: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_clean"
@@ -29,10 +26,10 @@ ifeq ($(vagrant_box_is_up),)
 endif
 
 local_build: build bin
-	@cd build && cmake .. && make 
+	@cd build && cmake .. && make $(app)
 
 local_run: local_build
-	@LC_ALL="C.UTF-8" time bin/$(app) $(in) $(out)
+	@LC_ALL="C.UTF-8" time bin/$(app) $(args)
 
 build:
 	mkdir build

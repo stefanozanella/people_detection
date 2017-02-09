@@ -478,7 +478,7 @@ following programs can be found:
     samples to. An example invocation is as follows:
 
     \begin{verbatim}
-    [TODO] Add extract_faces invocation example
+    make extract_samples in=dataset/samples out=dataset/positive_frontal
     \end{verbatim}
 
   \item an application that trains a cascaded face detector given a set of
@@ -489,14 +489,20 @@ following programs can be found:
     application can be invoked as follows:
 
     \begin{verbatim}
-    [TODO] Add train invocation example
+    make train positive_set=dataset/positive_frontal \
+      negative_sample=negative.pcd
     \end{verbatim}
 
-  \item a sample application that scans a set of scenes for people.
+    The input consists of two arguments: a folder where the positive samples are
+    located, and the path to a PCD scene that contains only negative samples.
+
+  \item a sample application that scans a set of scenes for people. The
+    application accepts as input a folder containing PCD scenes. Each scene will
+    be analyzed sequentially.
     TODO Add information about the graphical output once decided
 
     \begin{verbatim}
-    [TODO] Add invocation example
+    make run in=dataset/samples
     \end{verbatim}
 \end{itemize}
 
