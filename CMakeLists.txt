@@ -19,12 +19,6 @@ add_executable(people_detector apps/people_detector.cpp
   src/strong_classifier.cpp src/storage.cpp src/sub_window.cpp
   src/integral_image.cpp src/single_seed_region_growing_rgb.cpp
   src/cascade_classifier.cpp)
-add_executable(detection_test apps/detection_test.cpp
-  src/training_sample.cpp src/rect.cpp
-  src/feature.cpp src/feature_value.cpp src/weak_classifier.cpp
-  src/strong_classifier.cpp src/storage.cpp src/sub_window.cpp
-  src/integral_image.cpp src/single_seed_region_growing_rgb.cpp
-  src/cascade_classifier.cpp)
 add_executable(train apps/train.cpp src/training_sample.cpp src/rect.cpp
   src/feature.cpp src/feature_value.cpp src/weak_classifier.cpp
   src/strong_classifier.cpp src/storage.cpp src/integral_image.cpp
@@ -32,6 +26,5 @@ add_executable(train apps/train.cpp src/training_sample.cpp src/rect.cpp
   src/cascade_classifier.cpp)
 add_executable(extract_samples apps/extract_samples.cpp src/sample_selector.cpp)
 target_link_libraries(people_detector ${PCL_LIBRARIES} yaml-cpp)
-target_link_libraries(detection_test ${PCL_LIBRARIES} yaml-cpp)
 target_link_libraries(train ${PCL_LIBRARIES} yaml-cpp)
 target_link_libraries(extract_samples ${PCL_LIBRARIES})

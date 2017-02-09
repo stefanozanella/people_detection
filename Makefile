@@ -5,7 +5,7 @@ all: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_build"
 
 run: vagrant_box
-	vagrant ssh -c "cd /vagrant && make local_run app=detection_test args='/vagrant/$(in)'"
+	vagrant ssh -c "cd /vagrant && make local_run app=people_detector args='/vagrant/$(in)'"
 
 train: vagrant_box
 	vagrant ssh -c "cd /vagrant && make local_run app=train args='/vagrant/$(positive_set) /vagrant/$(negative_sample)'"
