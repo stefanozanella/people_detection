@@ -255,9 +255,6 @@ int main(int argc, char** argv) {
 
     cascade.push_back(strong);
 
-    // TODO
-    // We should check also here if we're improving the DR with respect to the
-    // previous iteration. If not, we should get out of the loop
     while (current_false_positive_rate > MAXIMUM_FALSE_POSITIVE_RATE * last_false_positive_rate) {
       float last_confirmed_detection_rate = current_detection_rate;
       float last_confirmed_false_positive_rate = current_false_positive_rate;
@@ -342,9 +339,6 @@ int main(int argc, char** argv) {
       current_detection_rate = final_validation_stats.detection_rate;
     }
 
-
-    // TODO We need to store the last performances at the end of each weak
-    // classifier training
     cout << "\t\tCurrent DR: " << current_detection_rate << " | Last stage DR: " << last_stage_detection_rate << endl;
     cout << "\t\tCurrent FPR: " << current_false_positive_rate << " | Last FPR: " << last_stage_false_positive_rate << endl;
 
