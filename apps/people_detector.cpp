@@ -29,6 +29,7 @@
 #include "cascade_classifier.h"
 #include "load_trained_detector.h"
 #include "sub_window.h"
+#include "common.h"
 
 using std::string;
 using std::cout;
@@ -123,7 +124,7 @@ void find_faces(const PointCloudT::Ptr sample, const CascadeClassifier& detector
   SubWindow sub_window (sample);
 
   int x = 0, y = 0, current_win_size;
-  const int base_win_size = 148;
+  const int base_win_size = BASE_WIN_SIZE;
 
   int pos = 0, neg = 0;
   vector<vector<Rect>*> detection_buckets;

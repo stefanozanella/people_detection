@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "common.h"
+
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
 typedef pcl::visualization::PCLVisualizer PCLVisualizer;
@@ -23,7 +25,7 @@ using std::string;
 using std::vector;
 
 class SampleSelector {
-  static const int base_win_size = 148; // TODO Ahem...
+  static const int base_win_size = BASE_WIN_SIZE;
 
   PointCloudT::Ptr input;
   PCLVisualizer viewer;
