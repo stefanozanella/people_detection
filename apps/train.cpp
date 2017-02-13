@@ -1,60 +1,3 @@
-/**
- * GOAL:
- * [x] load samples
- * [x] calculate samples' integral image
- * [x] samples normalization
- * [x] generate features
- * [x] verify generated features and feature calculation
- * [x] select first weak classifier
- *   [x] normalize the weights
- *   [x] for each feature
- *     [x] compute feature value for all samples
- *     [x] sort feature values
- *     [x] compute optimal threshold and polarity
- *     TODO Refactor and document
- *   [x] update the weights
- * [x] build strong classifier from weak classifiers
- * [x] store partial training results
- * TODO extract storing logic into separate classes?
- * [x] load eventual partial training results
- * [x] skip training partially if results loaded from disk
- * [x] threshold lowering for detection rate increase
- * [ ] **validate approach**
- *   [?] try to reproduce old integral image algorithm where the square sum was
- *   computed at once and check if results change/improve.
- * [ ] expand training set
- *   [x] add more positive samples
- *   [x] add more negative samples
- * [ ] decide on a base size for the training set, split 50:50 (probably
- * determined by how many faces you can pick out)
- * [x] scan image without faces -> use algo from people_detector
- * [ ] find base size, pick max together with positive samples as a base size
- *     for feature generation
- * [x] pick randomly from negative samples pool, fill up to match number of
- *     faces -> not really random, but doesn't change results much apparently
- * [x] train first classifier
- *   [x] fix polarity calculation in StrongClassifierTraining
- *   [x] fix feature generation, base it on the minimum example's size (you
- *   shouldn't have any feature value = 0)
- * [x] prepare data for second round
- *   [x] reset positive samples so that weight are reinitialized
- *   [x] pick randomly from validation samples that fail classification -> not
- *   really random, but seems to work
- * [ ] consolidate approach into a cascade classifier
- *   [x] build cascade classifier
- *   [x] store cascade classifier
- *   [x] get numbers out of the cascade classifier
- *   [ ] add threshold adjustment to weak classifier (idea: wouldn't it be
- *   possible to reverse the process? I.e. instead of training first and then
- *   adjusting the threshold to fit the detection rate, wouldn't it be possible,
- *   given a target detection rate for the classifier, to deduce the number of
- *   failing samples to allow so that the training can already take that into
- *   account - meaning, we don't minimize the error, but we try to reach the
- *   target detection rate)
- * [ ] refactor
- *   [ ] extract interface type "classifier" with method "classify", should
- *   apply to weak, strong and cascade.
- */
 #include <string>
 #include <iostream>
 #include <vector>
@@ -174,7 +117,7 @@ int scan_samples_from_point_cloud(vector<PointCloudT::Ptr>& samples, const strin
   }
 
   int x = 0, y = 0, current_win_size;
-  const int base_win_size = 148; // TODO
+  const int base_win_size = 148;
 
   int pos = 0, neg = 0;
 
@@ -291,8 +234,6 @@ int main(int argc, char** argv) {
     samples.push_back(negative_training_sample_pool.at(k*step % negative_sample_pool.size()));
   }
 
-  // TODO Move somewhere else, use point clouds rather than training samples so
-  // we can do this at the very beginning
   cout << "Generating features...";
   generate_features(features, find_smallest_window(samples));
   cout << features.size() << " features generated." << endl;
@@ -309,7 +250,6 @@ int main(int argc, char** argv) {
     float last_detection_rate = current_detection_rate;
 
     StrongClassifier strong;
-    // TODO the trainer should wrap the samples so that it "owns" the weights.
     StrongClassifierTraining training (samples, features, strong);
 
     cascade.push_back(strong);
@@ -375,45 +315,23 @@ int main(int argc, char** argv) {
         }
       }
 
-      //cout << "Last FPR: " << reference_false_positive_rate << endl;
-      //cout << "Current DR: " << current_detection_rate << " | Last DR: " << reference_detection_rate << endl;
-
       if (current_detection_rate <= reference_detection_rate && current_false_positive_rate >= reference_false_positive_rate) {
-        //cout << "\t\tCurrent DR: " << current_detection_rate << " | Last DR: " << reference_detection_rate << endl;
         cascade.pop_back();
         training.discard_last_trained_classifier();
         cascade.push_back(strong);
 
-        //cout << "Breaking the loop" << endl;
         break;
       }
 
-      //DetectionPerformance final_samples_performance (samples, cascade);
-      //DetectionStats final_samples_stats = final_samples_performance.analyze();
-      //show_performance_stats(final_samples_stats);
-
       DetectionPerformance final_validation_performance (validation_set, cascade);
       DetectionStats final_validation_stats = final_validation_performance.analyze();
-      //show_performance_stats(final_validation_stats);
-
-      //cout << "Target FPR for stage: " << MAXIMUM_FALSE_POSITIVE_RATE * last_false_positive_rate << endl;
-      //cout << "Current FPR: " << final_validation_stats.false_positive_rate << endl;
 
       cout << endl;
 
-      //cout << "Target DR for stage: " << MINIMUM_DETECTION_RATE * last_detection_rate << endl;
-      //cout << "Current DR: " << final_validation_stats.detection_rate << endl;
-
       if (current_detection_rate <= last_confirmed_detection_rate && current_false_positive_rate >= last_confirmed_false_positive_rate) {
-        //cout << "\t\tCurrent DR: " << current_detection_rate << " | Last DR: " << reference_detection_rate << endl;
         cascade.pop_back();
         training.discard_last_trained_classifier();
         cascade.push_back(strong);
-
-        cout << "Breaking the loop 2" << endl;
-
-        //last_stage_false_positive_rate = current_false_positive_rate;
-        //last_stage_detection_rate = current_detection_rate;
 
         break;
       }
@@ -423,7 +341,6 @@ int main(int argc, char** argv) {
       current_detection_rate = final_validation_stats.detection_rate;
     }
 
-    //cout << "Running from here" << endl;
 
     // TODO We need to store the last performances at the end of each weak
     // classifier training
@@ -458,93 +375,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  // perform detection with current strong classifier on set composed of:
-  // - all positive samples
-  // - false positives from previous stage
-  // show stats for:
-  // - detection rate: ???
-  // - false positive rate: ???
-  // show prompt to decide if:
-  // - add another weak classifier
-  // - decrease threshold -> find a way to reset threshold to previous value
-  // in case stats go awry?
-  // - start training of new stage
-
-  // TODO This thing needs a lot of refinement
-  //for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-  //  if (sample->isPositive && !strong.is_face(*sample)) {
-  //    strong.force_detection(*sample);
-
-  //    stats = performance.analyze();
-
-  //    cout << "Current detection stats" << endl;
-  //    cout << "\tTotal positive samples: " << stats.total_positive << endl;
-  //    cout << "\tTotal negative samples: " << stats.total_negative << endl;
-  //    cout << "\tDetected false negatives: " << stats.false_negatives << endl;
-  //    cout << "\tDetected false positives: " << stats.false_positives << endl;
-  //    cout << "\tDetection rate: " << stats.detection_rate << endl;
-  //    cout << "\tFalse positive rate: " << stats.false_positive_rate << endl;
-  //  }
-  //}
-
-  //stats = performance.analyze();
-
-  //cout << "Current detection stats" << endl;
-  //cout << "\tTotal positive samples: " << stats.total_positive << endl;
-  //cout << "\tTotal negative samples: " << stats.total_negative << endl;
-  //cout << "\tDetected false negatives: " << stats.false_negatives << endl;
-  //cout << "\tDetected false positives: " << stats.false_positives << endl;
-  //cout << "\tDetection rate: " << stats.detection_rate << endl;
-  //cout << "\tFalse positive rate: " << stats.false_positive_rate << endl;
-
   save_training_results(cascade, "face_detector.yml");
-
-  //cout << "~~~~~~~~~~~" << endl;
-
-  //for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-  //  if (sample->isPositive && !strong.is_face(*sample)) {
-  //    cout << "Ouch! False negative" << endl;
-  //  }
-
-  //  if (!sample->isPositive && strong.is_face(*sample)) {
-  //    cout << "Meh! False positive" << endl;
-  //  }
-  //}
-
-  // DEFINITIONS:
-  // false positive rate = sum(false positives) / sum(negative samples)
-  // detection rate = sum(positive detection) / sum(positive samples)
-  //
-  // f = maximum acceptable false positive rate per layer
-  // d = minimum acceptable detection rate per layer
-  // F_target = target overall false positive rate
-  // F_0 = 1.0 = current false positive rate
-  // while F_i > F_target
-  //  F_i = F_i-1
-  //  n_i = 0
-  //  while F_i > f * F_i-1
-  //    n_i++
-  //    train a strong classifier with n_i features
-  //    evaluate F_i and D_i for trained strong classifier
-  //    decrease threshold for the last classifier until the current *cascaded classifier* has a detection rate of at least d * D_i-1
-  //  empty set of negative example
-  //  if F_i > F_target
-  //    evaluate current cascaded detector on set of non-face and put any false detection into the set of negative examples
-
-  // f = maximum acceptable false positive rate per layer
-  // d = minimum acceptable detection rate per layer
-  // F_target = target overall false positive rate
-  // F = 1.0 = current false positive rate
-  // while F > F_target
-  //  F_tmp = F
-  //  n_i = 0
-  //  while F_tmp > f * F (or "while FPR of the layer > f" ?)
-  //    n_i++
-  //    train a strong classifier with n_i features (-> add a trained weak
-  //    classifier to the previously trained strong classifier)
-  //    evaluate F_tmp and D_i for trained *cascaded classifier*
-  //    decrease threshold for the last classifier until the current *cascaded classifier* has a detection rate of at least d * D_i-1
-  //  F = F_tmp
 
   return 0;
 }

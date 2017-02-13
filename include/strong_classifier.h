@@ -21,7 +21,6 @@ class StrongClassifier {
   void push_back(const WeakClassifier& weak);
   void pop_back();
   bool is_face(const Sample& sample) const;
-  void force_detection(const Sample& sample); // TODO Remove
   void save(Storage& storage) const;
 };
 

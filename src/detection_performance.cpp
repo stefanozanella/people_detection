@@ -9,7 +9,7 @@ DetectionStats DetectionPerformance::analyze() {
   DetectionStats stats;
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive) {
+    if (sample->is_positive) {
       stats.total_positive++;
 
       if (!classifier.is_face(*sample))

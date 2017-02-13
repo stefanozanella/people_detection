@@ -1,8 +1,8 @@
 #include "training_sample.h"
 
-TrainingSample::TrainingSample(PointCloudT::Ptr cloud, bool isPositive) :
+TrainingSample::TrainingSample(PointCloudT::Ptr cloud, bool is_positive) :
   integral_image (IntegralImage(cloud)),
-  isPositive (isPositive),
+  is_positive (is_positive),
   weight (1.0),
   size (cloud->width) // invariant: cloud->width == cloud->height
 {

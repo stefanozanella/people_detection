@@ -55,9 +55,6 @@ void IntegralImage::compute_integral_image(PointCloudT::Ptr cloud, MonochromePoi
 
   for (int k = 0; k < cloud->height; k++) {
     for (int j = 0; j < cloud->width; j++) {
-      // TODO What if z at 0,0 is NaN? What if another point is Nan?
-      // TODO A: I don't care because all that matters are intensities for now.
-      // TODO Hint: colors might be NaN too.
       MonochromePointT d;
       pcl::PointXYZRGBtoXYZI(cloud->at(j,k), d);
 

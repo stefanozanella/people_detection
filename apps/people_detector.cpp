@@ -123,7 +123,7 @@ void find_faces(const PointCloudT::Ptr sample, const CascadeClassifier& detector
   SubWindow sub_window (sample);
 
   int x = 0, y = 0, current_win_size;
-  const int base_win_size = 148; // TODO
+  const int base_win_size = 148;
 
   int pos = 0, neg = 0;
   vector<vector<Rect>*> detection_buckets;
@@ -177,10 +177,10 @@ void find_faces(const PointCloudT::Ptr sample, const CascadeClassifier& detector
         }
       }
 
-      x+=5; // TODO Maybe it's possible to move forward faster?
+      x+=5;
     }
 
-    y+=5; // TODO Maybe it's possible to move forward faster?
+    y+=5;
     x = 0;
   }
 

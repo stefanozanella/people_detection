@@ -15,12 +15,11 @@ class TrainingSample : public Sample {
 
   public:
 
-  // TODO Camel case?
-  bool isPositive;
+  bool is_positive;
   float weight;
   uint32_t size;
 
-  TrainingSample(PointCloudT::Ptr cloud, bool isPositive);
+  TrainingSample(PointCloudT::Ptr cloud, bool is_positive);
   float area_sum(int from_x, int from_y, int to_x, int to_y, uint32_t base_size) const;
 };
 

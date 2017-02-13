@@ -22,7 +22,7 @@ StrongClassifierTraining::StrongClassifierTraining(vector<TrainingSample>& sampl
 int StrongClassifierTraining::max_false_negatives_for_detection_rate(const float detection_rate) {
   int positive_count = 0;
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive) {
+    if (sample->is_positive) {
       positive_count++;
     }
   }
@@ -30,7 +30,6 @@ int StrongClassifierTraining::max_false_negatives_for_detection_rate(const float
   return (int) (positive_count * (1 - detection_rate));
 }
 
-// TODO: Camel case?
 void StrongClassifierTraining::trainWeakClassifier(const float min_detection_rate) {
   int max_false_negatives = max_false_negatives_for_detection_rate(min_detection_rate);
 
@@ -54,14 +53,14 @@ void StrongClassifierTraining::initialize_weights(vector<TrainingSample>& sample
   float positive_cumulative_weight = 0, negative_cumulative_weight = 0;
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive)
+    if (sample->is_positive)
       positive_cumulative_weight += sample->weight;
     else
       negative_cumulative_weight += sample->weight;
   }
 
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    sample->weight /= sample->isPositive ? positive_cumulative_weight : negative_cumulative_weight;
+    sample->weight /= sample->is_positive ? positive_cumulative_weight : negative_cumulative_weight;
   }
 }
 
@@ -103,8 +102,7 @@ WeakClassifier StrongClassifierTraining::optimal_classifier_for_feature(const Fe
   int total_positive_samples = 0, positive_samples_below = 0;
 
   for (vector<FeatureValue>::iterator feature_value = feature_values.begin(); feature_value != feature_values.end(); feature_value++) {
-    // TODO Feature envy? Maybe add a FeatureValue::update_weight_sum(float, float) ?
-    if (feature_value->sample.isPositive) {
+    if (feature_value->sample.is_positive) {
       total_positive_weight_sum += feature_value->sample.weight;
       total_positive_samples++;
     } else {
@@ -161,11 +159,8 @@ WeakClassifier StrongClassifierTraining::optimal_classifier_for_feature(const Fe
     // two samples with the same feature value could end up in different order,
     // resulting in a different count of what's below and what's above a
     // certain threshold.
-
-    // TODO Feature envy? Maybe review and use FeatureValue comparison +
-    // FeatureValue::update_weight_sum(float, float)?
     if (feature_value->value > previous_feature_value)
-      if (feature_value->sample.isPositive) {
+      if (feature_value->sample.is_positive) {
         positive_below += feature_value->sample.weight;
         positive_samples_below++;
       } else {
@@ -179,13 +174,7 @@ WeakClassifier StrongClassifierTraining::optimal_classifier_for_feature(const Fe
 
 void StrongClassifierTraining::update_weights(vector<TrainingSample>& samples, const WeakClassifier& classifier) {
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    // TODO Cleanup
-    if (sample->isPositive && !classifier.classify(*sample)) {
-      //cout << "Ouch! False negative" << endl;
-    } else if (!sample->isPositive && classifier.classify(*sample)) {
-      //cout << "Meh! False positive" << endl;
-    }
-    else {
+    if (sample->is_positive == classifier.classify(*sample)) {
       sample->weight *= classifier.error_weight_factor();
     }
   }
@@ -193,13 +182,7 @@ void StrongClassifierTraining::update_weights(vector<TrainingSample>& samples, c
 
 void StrongClassifierTraining::reset_weights(vector<TrainingSample>& samples, const WeakClassifier& classifier) {
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    // TODO Cleanup
-    if (sample->isPositive && !classifier.classify(*sample)) {
-      //cout << "Ouch! False negative" << endl;
-    } else if (!sample->isPositive && classifier.classify(*sample)) {
-      //cout << "Meh! False positive" << endl;
-    }
-    else {
+    if (sample->is_positive == classifier.classify(*sample)) {
       sample->weight /= classifier.error_weight_factor();
     }
   }
@@ -208,7 +191,7 @@ void StrongClassifierTraining::reset_weights(vector<TrainingSample>& samples, co
 float StrongClassifierTraining::compute_classifier_error(vector<TrainingSample>& samples, const WeakClassifier& classifier) {
   float classifier_error = 0.0f;
   for (vector<TrainingSample>::iterator sample = samples.begin(); sample != samples.end(); sample++) {
-    if (sample->isPositive != classifier.classify(*sample)) {
+    if (sample->is_positive != classifier.classify(*sample)) {
       classifier_error += sample->weight;
     }
   }

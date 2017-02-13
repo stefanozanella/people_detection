@@ -12,7 +12,7 @@ using std::vector;
 
 class Feature {
   public:
-  vector<Rect> rectangles; // TODO This might become private again
+  vector<Rect> rectangles;
 
   Feature(uint32_t base_size);
   Feature& operator<<(const Rect& rectangle);

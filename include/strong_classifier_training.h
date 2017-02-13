@@ -27,7 +27,6 @@ class StrongClassifierTraining {
   public:
 
   StrongClassifierTraining(
-    // TODO Should be const
     vector<TrainingSample>& samples,
     const vector<Feature>& features,
     StrongClassifier& strong

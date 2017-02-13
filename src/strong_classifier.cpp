@@ -28,10 +28,6 @@ bool StrongClassifier::is_face(const Sample& sample) const {
   return classification_value(sample) >= threshold;
 }
 
-void StrongClassifier::force_detection(const Sample& sample) {
-  threshold = classification_value(sample);
-}
-
 void StrongClassifier::save(Storage& storage) const {
   storage.add("threshold", threshold);
   for (vector<WeakClassifier>::const_iterator classifier = classifiers.begin(); classifier != classifiers.end(); classifier++) {
