@@ -461,6 +461,54 @@ downsampling features to sub-pixel sizes was jeopardizing the algorithm's
 effectiveness, so the first option was selected.
 
 \section{Body segmentation}
+Once a face has been identified by the detection algorithm, an attempt is made
+to expand the detection and identify the points that belong to the cloud. The
+idea is that since we already know some of the points that belong to the
+positive classification, we can use a segmentation technique that starts from
+those points and tries to include all the points that supposedly belong to the
+same object. One such technique is already implemented in the PCL and goes under
+the name of region growing.
+
+Region growing is particularly suitable due to the fact that it requires initial
+seed points, and he classification algorithm is designed to provide those.
+
+The main idea of the region growing algorithm is to start from a seed point and
+put all the points that match a certain definition of neighbor into the same
+region set. The curvature of each point is then checked against a certain
+predefined threshold: if it's below the limit, then the point is also added to
+the set of seeds.
+
+Once the set of seeds have been exhausted, the algorithm considers the
+segmentation of the region complete, and moves on by identifying the next seed
+and growing the next region. The algorithm completes when all the points have
+been assigned to a region.
+
+In the proposed implementation we use a variant of the above algorithm that
+also takes into consideration color information, implemented in the
+\texttt{pcl::segmentation::RegionGrowingRGB} class. Practically this differs
+from the original algorithm in two ways. First, color information is used
+instead of normals to identify neighboring points. Second, a merging algorithm
+is ran to control over- and under-segmentation. This algorithm attempts first to
+merge neighboring clusters depending on their average color difference. Then it
+uses a user-defined parameter to merge together neighboring clusters that appear
+to be too small.
+
+The advantage of such algorithm is that it usually performs better on people in
+terms of precision since a body is not a smooth surface. The merging algorithm
+is also useful to merge together body parts that are usually identified
+separately (e.g. attaching a hand to an arm covered by a sleeve).
+
+On the other side, this approach has some drawbacks. The main one being its
+computational complexity. In theory this problem would be mitigated by the fact
+that we provide the algorithm with initial seeds, so we should be able to
+exclude building the majority of segments in a scene. In practice though, even
+though the implementation found in PCL exposes a method to build a region based
+on a seed, this method still performs the full scene segmentation first.
+
+One possible solution to this problem could be to just grow a region based on
+the provided seed and to exclude points that don't match the criteria for the
+region being grown. The drawback of this is that the step in which adjacent and
+similar regions are merged is lost, making the algorithm less robust.
 
 \section{Implementation details}
 The effort to realize the algorithm described so far resulted in the
