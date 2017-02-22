@@ -547,7 +547,6 @@ following programs can be found:
   \item a sample application that scans a set of scenes for people. The
     application accepts as input a folder containing PCD scenes. Each scene will
     be analyzed sequentially.
-    TODO Add information about the graphical output once decided
 
     \begin{verbatim}
     make run in=dataset/samples
@@ -574,9 +573,69 @@ The source code of the project is freely available
 \href{https://github.com/stefanozanella/people_detection}{on GitHub}.
 
 \section{Results}
+Tests on the implementation of the algorithm described so far provided some results that
+definitely increase the confidence on the validity of the approach, but overall
+performance isn't brilliant. The reason for this is to be found in the limited
+size of the training dataset. Also, despite the speed of the face detector, the
+speed performance of the segmentation algorithm penalizes the overall time taken
+by the algorithm to identify a person.
+
+\subsection{Training dataset}
+The training dataset consists in a given set of 40 PCD scenes, one of which
+being a negative sample not containing any person. Using this scene as a source
+for negatives yields a negative training set of 2392 samples.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.8]{negative_samples.jpg}
+  \caption{Example of negative samples used in the training process}
+  \label{fig:negative_samples}
+\end{figure}
+
+To build the positive training set, instead, the tool described above has been
+used. Given the small size of the overall set, heads in all kinds of positions
+have been selected. Also, the same head has been used multiple times, by
+slightly shifting the selection window around it. With this approach it was
+possible to build a positive set of 560 samples.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.8]{positive_samples.jpg}
+  \caption{Example of positive samples used in the training process}
+  \label{fig:positive_samples}
+\end{figure}
+
+These numbers are barely enough to obtain solid results in training (especially
+given that the algorithm is trained to recognize heads in different positions).
+As a comparison, in their original paper Viola and Jones used a positive
+training set of around 5000 images, and the pool of negative samples had a size
+of almost 10000 - out of which a random set of maximum 6000 images was selected
+for each trained layer.
+
+In practical terms, this means the algorithm saturates rather quickly and
+performances can't be improved beyond a certain point without making the
+algorithm itself unstable. The final consequence of this is that the final
+detector has just 3 stages, and in each stage a single detector has been
+sufficient to reach the best result possible.
+
+\subsection{Detection performance}
+
+TODO insert image of good detection
+TODO insert image of bad detection
+
+\subsection{Speed considerations}
+All tests have been run in a virtual machine using a MacBook Pro, which hosts a
+2.6 GHz Intel Core i5.
+
+- time taken to open the image - TODO measure
+- face detector is fast - TODO measure how fast
+- first body segmentation is slow - TODO measure how slow
+- subsequent body segmentations are fast for obvious reasons
+- TODO make comparison with other people detection algorithm on same machine
+- overall algo isn't suitable for real-time
 
 \section{Further developments}
-The results observed by developing the present paper has been useful not only to
+The results observed by developing the present paper have been useful not only to
 validate the proposed approach, but also as inspiration for possible
 improvements of the base technique.
 
