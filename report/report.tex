@@ -625,14 +625,64 @@ TODO insert image of bad detection
 
 \subsection{Speed considerations}
 All tests have been run in a virtual machine using a MacBook Pro, which hosts a
-2.6 GHz Intel Core i5.
+2.6 GHz Intel Core i5. Due to the significant overhead of running processes
+inside a virtual machine, the numbers presented here shouldn't be considered
+more in relative terms to each other rather than absolute measures of peak
+performance.
 
-- time taken to open the image - TODO measure
-- face detector is fast - TODO measure how fast
-- first body segmentation is slow - TODO measure how slow
-- subsequent body segmentations are fast for obvious reasons
-- TODO make comparison with other people detection algorithm on same machine
-- overall algo isn't suitable for real-time
+Tests have been conducted to determine the algorithm's speed. Overall this is
+the sum of different steps being performed. Some of these steps can be
+considered as part of the core algorithm function, while others are accessory to
+its practical implementation and can be excluded. For the sake of completeness
+all of them have been measured.
+
+The first measured step is opening of the scene. On the test platform this
+happens on average in around 1800 ms. This step can be made faster if for
+example the input is provided by a camera, thus having a continuous in-memory
+stream of scenes (i.e. no disk round-trip to fetch the data).
+
+The second measured step is the face detection on the whole scene. This runs on
+average in 265 ms. As predicted, this is a very fast operation due to the low
+amount of computations needed by the cascaded classifier. It's worth noting
+though that the time complexity is not constant, since the more people in the
+scene, the more times the classifier will have to run till the end. Also, its
+speed depends on the amount of stages and features per stage; a classifier
+trained with a more extended set of samples is going to be more accurate but
+also slower on average.
+
+The third measured step is the first body segmentation in a scene. This has been
+measured at 60 s on average. As already discussed, since with the current
+implementation the whole scene is segmented once, this step results being
+extremely slow.
+
+The fourth measured step is segmentation of a body after the first one has been
+identified. This on average runs in 2 ms. As expected, this operation is very
+fast since the scene has already been segmented, so at this point all left to do
+is to search the cluster containing the centroid of the face that has been
+identified.
+
+The last measure is made around building the visual output of the algorithm. On
+average this happens in less than 1 ms. As the first step, this is also an
+accessory operation, which speed can change depending on the actual
+implementation and interface requirements; nevertheless in this case its running
+time is negligible with respect to the rest.
+
+Given the analysis above, one conclusion can be drawn. In its current
+incarnation, the algorithm is not suitable for real-time detection of people.
+It is important to note, though, that this is not necessarily due the
+algorithm's design per-se, but a few other specific components might affect this
+consequence:
+
+\begin{itemize}
+  \item the actual hardware where the experiment has been run
+  \item the fact that the current implementation doesn't take advantage of a
+    GPU to speed up computation
+  \item the fact that the current implementation is strictly sequential (i.e. it
+    doesn't take advantage of any possible parallelism)
+\end{itemize}
+
+These factors are subject to change in the future and might be subject of a
+development iteration aimed at improving the algorithm's overall performance.
 
 \section{Further developments}
 The results observed by developing the present paper have been useful not only to
