@@ -56,6 +56,11 @@ typedef struct Face {
   Face(PointXYZ min, PointXYZ max, PointT center) : min_boundary (min), max_boundary (max), center (center) {}
 } Face;
 
+typedef struct Person {
+  PointT min_boundary, max_boundary;
+  Person(PointT min, PointT max) : min_boundary (min), max_boundary (max) {}
+} Person;
+
 void bounded_min_max(PointCloudT::Ptr sample, int from_x, int from_y, int to_x, int to_y, PointXYZ& min, PointXYZ& max) {
   min.x = min.y = min.z = FLT_MAX;
   max.x = max.y = max.z = FLT_MIN;
@@ -188,7 +193,7 @@ void find_faces(const PointCloudT::Ptr sample, const CascadeClassifier& detector
   cout << "Pos: " << pos << ", Neg: " << neg << endl;
 }
 
-void expand_faces_to_bodies(const PointCloudT::Ptr sample, vector<Face>& faces, vector<pcl::PointIndices::Ptr>& bodies) {
+void expand_faces_to_bodies(const PointCloudT::Ptr sample, vector<Face>& faces, vector<PointCloudT::Ptr>& bodies) {
   KdTree::Ptr tree = KdTree::Ptr (new KdTree);
   tree->setInputCloud(sample);
 
@@ -210,8 +215,29 @@ void expand_faces_to_bodies(const PointCloudT::Ptr sample, vector<Face>& faces, 
     reg.getSegmentFromPoint(closest_index.at(0), *body);
 
     if (body->indices.size() > 2000) {
-      bodies.push_back(body);
+      ExtractIndices ei;
+      ei.setInputCloud(sample);
+      ei.setIndices(body);
+
+      PointCloudT::Ptr body_cloud (new PointCloudT);
+      ei.filter(*body_cloud);
+
+      bodies.push_back(body_cloud);
     }
+  }
+}
+
+void expand_bodies_to_people(const vector<PointCloudT::Ptr>& bodies, vector<Person>& people) {
+  for (vector<PointCloudT::Ptr>::const_iterator body = bodies.begin(); body != bodies.end(); body++) {
+    PointT body_min_boundary, body_max_boundary;
+    pcl::getMinMax3D(**body, body_min_boundary, body_max_boundary);
+
+    people.push_back(
+      Person(
+        body_min_boundary,
+        body_max_boundary
+      )
+    );
   }
 }
 
@@ -235,7 +261,8 @@ int main(int argc, char** argv) {
     }
 
     vector<Face> faces;
-    vector<pcl::PointIndices::Ptr> bodies;
+    vector<PointCloudT::Ptr> bodies;
+    vector<Person> people;
 
     find_faces(sample_cloud, detector, faces);
 
@@ -302,6 +329,7 @@ int main(int argc, char** argv) {
     ei.filter(*filtered_cloud_no_ground_plane);
 
     expand_faces_to_bodies(filtered_cloud_no_ground_plane, faces, bodies);
+    expand_bodies_to_people(bodies, people);
 
     cout << "Total clusters found: " << bodies.size() << endl;
 
@@ -309,22 +337,31 @@ int main(int argc, char** argv) {
     viewer.setCameraPosition(0,0,-2,0,-1,0,0);
 
     for (int k = 0; k < bodies.size(); k++) {
-      ExtractIndices ei;
-      ei.setInputCloud(filtered_cloud_no_ground_plane);
-      ei.setIndices(bodies.at(k));
-
-      PointCloudT::Ptr body_cloud (new PointCloudT);
-      ei.filter(*body_cloud);
-
       viewer.addPointCloud<PointT>(
-          body_cloud,
-          pcl::visualization::PointCloudColorHandlerRGBField<PointT>(body_cloud),
-          "body"+boost::to_string(k)
-          );
+        filtered_sample,
+        pcl::visualization::PointCloudColorHandlerRGBField<PointT>(filtered_sample),
+        "scene"+boost::to_string(k)
+      );
 
+      viewer.addCube(
+        people.at(k).min_boundary.x,
+        people.at(k).max_boundary.x,
+        people.at(k).min_boundary.y,
+        people.at(k).max_boundary.y,
+        people.at(k).min_boundary.z,
+        people.at(k).max_boundary.z,
+        0, 1, 0,
+        "person"+boost::to_string(k)
+      );
+      //viewer.addPointCloud<PointT>(
+      //  bodies.at(k),
+      //  pcl::visualization::PointCloudColorHandlerRGBField<PointT>(bodies.at(k)),
+      //  "body"+boost::to_string(k)
+      //);
     }
 
     viewer.spin();
+    // TODO Remove
     //show_faces(sample_cloud, faces);
   }
 
