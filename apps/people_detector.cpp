@@ -78,32 +78,6 @@ void bounded_min_max(PointCloudT::Ptr sample, int from_x, int from_y, int to_x, 
   }
 }
 
-void show_faces(PointCloudT::Ptr& sample, vector<Face>& faces) {
-  pcl::visualization::PCLVisualizer viewer("PCL Viewer");
-  viewer.setCameraPosition(0,0,-2,0,-1,0,0);
-
-  viewer.addPointCloud<PointT>(
-    sample,
-    pcl::visualization::PointCloudColorHandlerRGBField<PointT>(sample),
-    "sample"
-  );
-
-  for (int k = 0; k < faces.size(); k++) {
-    viewer.addCube(
-      faces.at(k).min_boundary.x,
-      faces.at(k).max_boundary.x,
-      faces.at(k).min_boundary.y,
-      faces.at(k).max_boundary.y,
-      faces.at(k).min_boundary.z,
-      faces.at(k).max_boundary.z,
-      0, 1, 0,
-      "face"+boost::to_string(k)
-    );
-  }
-
-  viewer.spin();
-}
-
 bool is_the_size_of_a_face(const PointCloudT::Ptr sample, int x_from, int y_from, int x_to, int y_to) {
   PointXYZ min_boundary, max_boundary;
   bounded_min_max(
@@ -189,8 +163,6 @@ void find_faces(const PointCloudT::Ptr sample, const CascadeClassifier& detector
     y+=5;
     x = 0;
   }
-
-  cout << "Pos: " << pos << ", Neg: " << neg << endl;
 }
 
 void expand_faces_to_bodies(const PointCloudT::Ptr sample, vector<Face>& faces, vector<PointCloudT::Ptr>& bodies) {
@@ -331,8 +303,6 @@ int main(int argc, char** argv) {
     expand_faces_to_bodies(filtered_cloud_no_ground_plane, faces, bodies);
     expand_bodies_to_people(bodies, people);
 
-    cout << "Total clusters found: " << bodies.size() << endl;
-
     pcl::visualization::PCLVisualizer viewer("PCL Viewer");
     viewer.setCameraPosition(0,0,-2,0,-1,0,0);
 
@@ -353,16 +323,9 @@ int main(int argc, char** argv) {
         0, 1, 0,
         "person"+boost::to_string(k)
       );
-      //viewer.addPointCloud<PointT>(
-      //  bodies.at(k),
-      //  pcl::visualization::PointCloudColorHandlerRGBField<PointT>(bodies.at(k)),
-      //  "body"+boost::to_string(k)
-      //);
     }
 
     viewer.spin();
-    // TODO Remove
-    //show_faces(sample_cloud, faces);
   }
 
   return 0;
