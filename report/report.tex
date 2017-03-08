@@ -230,11 +230,11 @@ to the overall number of possible samples). So a simple classifier could already
 be useful in reducing the number of samples that need to be checked by a more
 complex (and thus refined) classifier. \\
 This approach is achieved by implementing a variant of AdaBoost \cite{adaboost}
-that connect a series of strong classifiers of varying complexity in a chain.
+that connects a series of strong classifiers of varying complexity in a chain.
 Ideally the detectors should have high detection rate and acceptable false
-positive rate. That given, the cascade works as follows: if a sample is
-rejected in a stage of the cascade, it won't be processed by later stages. A
-sample is declared positive only if all the stages classify it so.
+positive rate. That given, the cascade works as follows: if a sample is rejected
+in a stage of the cascade, it won't be processed by later stages. A sample is
+declared positive only if all the stages classify it so.
 
 \begin{figure}[h]
   \centering
@@ -395,7 +395,7 @@ from the camera, then the size of any given sample can then be calculated just
 by dividing the reference size by the sample distance.
 
 In practical terms, this poses two problems: the fact that the calculation
-happens on pixels and not of real values, and that the depth is not constant
+happens on pixels and not on real values, and that the depth is not constant
 over a specific area. \\
 The first problem is simply solved by rounding up the division to the next
 integer. Moreover, since once the sample size has been calculated we need to
@@ -415,7 +415,7 @@ distance information), we can just assume that at least one of its neighbors
 contains correct information. In other words, in case we encounter outliers, we
 can safely assume that the algorithm already classified or will classify the
 area correctly when analyzing neighbor points. \\
-The only downside of this approach is that in case of area that are overall
+The only downside of this approach is that in case of areas that are overall
 noisy (such as peripheral areas in the camera's field of view) the algorithm
 might end up skipping classification on large portions of the image. But in that
 case, classification is generally difficult anyway given the low SNR.
@@ -445,7 +445,7 @@ amount of features generated and evaluated when training the classifier. In the
 the image must be generated. In the case of a 3D point cloud, we can reduce the
 amount of features to those that fit the smallest sample present in the scene.
 Features for bigger samples can be upscaled from the smaller ones. This approach
-offer two contrasting aspects:
+offers two contrasting aspects:
 
 \begin{itemize}
   \item on one side, resolution is lost when upscaling the features (the bigger the
@@ -466,11 +466,11 @@ to expand the detection and identify the points that belong to the cloud. The
 idea is that since we already know some of the points that belong to the
 positive classification, we can use a segmentation technique that starts from
 those points and tries to include all the points that supposedly belong to the
-same object. One such technique is already implemented in the PCL and goes under
+same object. One such technique is already implemented in PCL and goes under
 the name of region growing.
 
 Region growing is particularly suitable due to the fact that it requires initial
-seed points, and he classification algorithm is designed to provide those.
+seed points, and the classification algorithm is designed to provide those.
 
 The main idea of the region growing algorithm is to start from a seed point and
 put all the points that match a certain definition of neighbor into the same
@@ -498,7 +498,7 @@ terms of precision since a body is not a smooth surface. The merging algorithm
 is also useful to merge together body parts that are usually identified
 separately (e.g. attaching a hand to an arm covered by a sleeve).
 
-On the other side, this approach has some drawbacks. The main one being its
+On the other side, this approach has some drawbacks, the main one being its
 computational complexity. In theory this problem would be mitigated by the fact
 that we provide the algorithm with initial seeds, so we should be able to
 exclude building the majority of segments in a scene. In practice though, even
@@ -522,7 +522,7 @@ following programs can be found:
     around the selected point. A point can be selected with \texttt{Shift +
     Click}. The position of the viewport can be adjusted using the arrow keys.
     Pressing \texttt{S} saves the sample to a separate file. The program accepts
-    as input a folder whenre to read the scenes from, and one where to save the
+    as input a folder where to read the scenes from, and one where to save the
     samples to. An example invocation is as follows:
 
     \begin{verbatim}
@@ -731,7 +731,7 @@ A last case worth mentioning is that of multiple detections on a single person.
 The case is easy to understand by simply looking at figure
 \ref{fig:multiple_detections}: basically a single person is segmented with
 multiple positive detections. In this case, the detected areas are
-basically non-overlapping. While overall the whole person is detected, this
+fundamentally non-overlapping. While overall the whole person is detected, this
 obviously cannot be considered accurate.
 
 \begin{figure}[h]
@@ -753,7 +753,7 @@ improve the algorithm's accuracy.
 \subsection{Speed considerations}
 All tests have been run in a virtual machine using a MacBook Pro, which hosts a
 2.6 GHz Intel Core i5. Due to the significant overhead of running processes
-inside a virtual machine, the numbers presented here shouldn't be considered
+inside a virtual machine, the numbers presented here should be considered
 more in relative terms to each other rather than absolute measures of peak
 performance.
 
@@ -763,7 +763,7 @@ considered as part of the core algorithm function, while others are accessory to
 its practical implementation and can be excluded. For the sake of completeness
 all of them have been measured.
 
-The first measured step is opening of the scene. On the test platform this
+The first measured step is opening the scene file. On the test platform this
 happens on average in around 1800 ms. This step can be made faster if for
 example the input is provided by a camera, thus having a continuous in-memory
 stream of scenes (i.e. no disk round-trip to fetch the data).
@@ -784,9 +784,9 @@ extremely slow.
 
 The fourth measured step is segmentation of a body after the first one has been
 identified. This on average runs in 2 ms. As expected, this operation is very
-fast since the scene has already been segmented, so at this point all left to do
-is to search the cluster containing the centroid of the face that has been
-identified.
+fast since the scene has already been segmented, so at this point all that's
+left to do is to search the cluster containing the centroid of the face that has
+been identified.
 
 The last measure is made around building the visual output of the algorithm. On
 average this happens in less than 1 ms. As the first step, this is also an
@@ -817,7 +817,7 @@ validate the proposed approach, but also as inspiration for possible
 improvements of the base technique.
 
 An obvious improvement, achievable with what built already in this paper, is
-training the detector with more samples, and possibly a more diverse set. A
+training the detector with more samples, and possibly with a more diverse set. A
 fundamental principle of machine learning is that the more data is used for
 training, the better the results. Also, to make the algorithm suitable for a
 real-world case it's indispensible for it to be generic enough not to require
@@ -836,8 +836,8 @@ running multiple detectors in parallel and process the results with a consensus
 algorithm. The different detectors can be of the same type, trained to detect
 different poses (e.g. to identify profile faces rather than frontal positions);
 or they could be of different types, supporting each other in case of difficult
-detection (e.g. an intensity-based detector running in parallel with a
-depth-based one, to compensate sensor's limitation in specific areas).
+detections (e.g. an intensity-based detector running in parallel with a
+depth-based one, to compensate sensor's limitations in specific areas).
 
 Another aspect that in this paper hasn't been considered is that of
 parallelization. On a high level a cascaded detector isn't particularly suited
