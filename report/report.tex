@@ -614,14 +614,141 @@ for each trained layer.
 
 In practical terms, this means the algorithm saturates rather quickly and
 performances can't be improved beyond a certain point without making the
-algorithm itself unstable. The final consequence of this is that the final
-detector has just 3 stages, and in each stage a single detector has been
+training algorithm itself unstable. The final consequence of this is that the
+final detector has just 3 stages, and in each stage a single detector has been
 sufficient to reach the best result possible.
 
 \subsection{Detection performance}
+To practically test the validity of the approach, the trained detector has been
+applied to the set of samples also used for the training itself. It's important
+to note that this is not an optimal approach, as in these cases it's always
+recommended to keep the training set and the validation set disjoint to prevent
+overfitting of the trained classifier. Nevertheless, given the limited amount of
+samples available, the same set has been used both for training and validation.
 
-TODO insert image of good detection
-TODO insert image of bad detection
+The results can be analyzed along two distinct dimensions: precision and
+accuracy. \\
+We can define precision as the algorithm's capability of identifying a person
+within a scene, while accuracy deals with how precisely the algorithm identifies
+a person's boundaries.
+
+When talking about precision, we can use standard measurements like detection
+rate and false positive rate. To go a bit more in depth, we can also analyze
+some results and try to carachterize the algorithm's performance in more detail.
+
+In terms of detection rate, the results are highly variable as expected from the
+training step. Performance ranges from 0\% to 100\%, with an average of 58.57\%.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.2]{no_missing_but_inaccurate.png}
+  \caption{Detection with 100\% detection rate}
+  \label{fig:no_missing_but_inaccurate}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.2]{zero_detection_rate.png}
+  \caption{Detection with 0\% detection rate}
+  \label{fig:zero_detection_rate}
+\end{figure}
+
+Figures \ref{fig:no_missing_but_inaccurate} and \ref{fig:zero_detection_rate}
+give a visual clue of this variability. In the first case every person in the
+scene is correctly detected, while in the second case the only person present is
+missed by the algorithm. On average detection on a scene looks more like
+figure \ref{fig:one_missing}, where not all the people are correctly identified.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.2]{one_missing.png}
+  \caption{The algorithm correclty detects only 3 out of 4 people in the scene}
+  \label{fig:one_missing}
+\end{figure}
+
+Focusing then on the false positive rate, we can see the results are also
+variable but a bit more consistent due to the higher amount of negatives present
+in a scene. Results vary in a range of 0\% to 0.06\%. Visually, this translates
+to a few different patterns. A significant example is the output of the
+detection on the scene containing no positives (fig. \ref{fig:false_positives}).
+While the algorithm rejects most of the samples, it still identifies a person in
+three of the almost 9600 subwindows.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.2]{false_positives.png}
+  \caption{The algorithm correclty detects only 3 out of 4 people in the scene}
+  \label{fig:false_positives}
+\end{figure}
+
+Another possible case is the one depicted in figure
+\ref{fig:mixed_true_false_positives} where along with a true positive, a
+false positive is detected in the chair.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.2]{mixed_true_false_positives.png}
+  \caption{A true detection is missed and a false positive is detected instead}
+  \label{fig:mixed_true_false_positives}
+\end{figure}
+
+The numbers given so far only considered a detection as either correct or
+incorrect depending on whether mentioned detection was including part of a
+person or not. What remains to be analyzed is the accuracy of those detection,
+meaning how much of a person is detected and how much is instead left out.
+
+The analysis in this case has been performed on a qualitative level, since it's
+hard to precisely define a person's boundaries so performing an actual
+measurements bring little value in addition to what a qualitative inspection can
+give.
+
+Also in this case the results vary in quality. An example of good accuracy is
+represented by the right detection in figure \ref{fig:good_accuracy}: basically
+the entire figure is enclosed in the detection cube. At the same time, the
+detection on the left of the scene depicts a common level of low accuracy: the
+detection cube is centered on the person but doesn't enclose all of it. Another
+pattern can be seen in figure \ref{fig:good_dr_but_inaccurate}, where the
+detection cube on the right excluded the lower body part and at the same time
+appears to be oversized with respect to the actual person.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.2]{good_accuracy.png}
+  \caption{The figure on the right is correctly enclosed in the detection cube,
+  while accuracy for the person on the left is lower}
+  \label{fig:good_accuracy}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.2]{good_dr_but_inaccurate.png}
+  \caption{The detection on the right is oversized and excludes the lower body
+  part}
+  \label{fig:good_dr_but_inaccurate}
+\end{figure}
+
+A last case worth mentioning is that of multiple detections on a single person.
+The case is easy to understand by simply looking at figure
+\ref{fig:multiple_detections}: basically a single person is segmented with
+multiple positive detections. In this case, the detected areas are
+basically non-overlapping. While overall the whole person is detected, this
+obviously cannot be considered accurate.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.2]{multiple_detections.png}
+  \caption{The person on the right is detected twice with non-overlapping
+  areas}
+  \label{fig:multiple_detections}
+\end{figure}
+
+Overall, detection results reflect the results that have been obtained during
+the training of the detector. They don't make the algorithm "ready for
+production use", but at the same time they show a clear path for performance
+improvement: on one side, training the algorithm with a larger training set (and
+possibly a separate validation set) is likely to give better results in term of
+precision, while a more precise fine-tuning of the segmentation algorithm could
+improve the algorithm's accuracy.
 
 \subsection{Speed considerations}
 All tests have been run in a virtual machine using a MacBook Pro, which hosts a
