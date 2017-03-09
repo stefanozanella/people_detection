@@ -24,8 +24,8 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/region_growing_rgb.h>
 
-#include "pcl/segmentation/single_seed_region_growing_rgb.h"
 #include "cascade_classifier.h"
 #include "load_trained_detector.h"
 #include "sub_window.h"
@@ -48,7 +48,7 @@ typedef pcl::octree::OctreePointCloudSearch<PointT> OctreeSearch;
 typedef pcl::search::KdTree<PointT> KdTree;
 typedef pcl::PointCloud<pcl::Normal> NormalCloudT;
 typedef pcl::NormalEstimation<PointT, pcl::Normal> NormalEstimation;
-typedef pcl::SingleSeedRegionGrowingRGB<PointT, pcl::Normal> RegionGrowingRGB;
+typedef pcl::RegionGrowingRGB<PointT, pcl::Normal> RegionGrowingRGB;
 
 typedef struct Face {
   PointXYZ min_boundary, max_boundary;
